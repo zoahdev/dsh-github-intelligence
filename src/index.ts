@@ -54,7 +54,7 @@ export const Config: Schema<Config> = Schema.object({
   defaultLimit: Schema.number().default(5),
   bodyPreviewChars: Schema.number().default(500),
   cacheTtlMs: Schema.number().default(60_000),
-  userAgent: Schema.string().default('dsh-github-intelligence/2.7.0'),
+  userAgent: Schema.string().default('dsh-github-intelligence/2.8.0'),
 })
 
 function assertPositiveInteger(name: string, value: number): void {
@@ -75,7 +75,7 @@ function clampLimit(value: number): number {
 
 function clientOptions(config: Config): GitHubClientOptions {
   const options: GitHubClientOptions = {
-    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.7.0',
+    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.8.0',
     timeoutMs: config.timeoutMs ?? 10_000,
     bodyPreviewChars: config.bodyPreviewChars ?? 500,
     cacheTtlMs: config.cacheTtlMs ?? 60_000,
