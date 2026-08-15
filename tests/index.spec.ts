@@ -52,11 +52,11 @@ afterEach(() => {
 })
 
 describe('plugin registration', () => {
-  it('registers exactly seven tools', () => {
+  it('registers 100+ tools (flagship + catalog + help)', () => {
     const registered: unknown[] = []
     const ctx = { tools: { register: (tool: unknown) => { registered.push(tool) } } } as never
     apply(ctx, resolvedConfig())
-    expect(registered).toHaveLength(7)
+    expect(registered.length).toBeGreaterThanOrEqual(100)
   })
 
   it('rejects non-positive integer configuration', () => {
@@ -133,5 +133,51 @@ describe('input validation', () => {
   it('rejects an empty search query', async () => {
     const [, , search] = defineTools(resolvedConfig())
     await expect(search.execute({ query: '  ' }, exec())).rejects.toThrow('non-empty')
+  })
+})
+
+describe('github_compare tool', () => {
+  it('compares two repositories and reuses the cache on a second call', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(repoBody()))
+    vi.stubGlobal('fetch', fetchMock)
+    const tools = defineTools(resolvedConfig())
+    const compare = tools[7]
+
+    const result = await compare.execute({ ownerA: 'x', repoA: 'y', ownerB: 'z', repoB: 'w' }, exec())
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(result).toMatchObject({
+      first: { fullName: 'x/y', stars: 5 },
+      second: { fullName: 'x/y', stars: 5 },
+      deltas: { stars: 0, forks: 0, openIssues: 0 },
+    })
+
+    await compare.execute({ ownerA: 'x', repoA: 'y', ownerB: 'z', repoB: 'w' }, exec())
+    expect(fetchMock).toHaveBeenCalledTimes(2) // cached
+  })
+})
+
+describe('github_trending tool', () => {
+  it('builds a created-after query and optional language filter', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ items: [] }))
+    vi.stubGlobal('fetch', fetchMock)
+    const trending = defineTools(resolvedConfig())[8]
+    await trending.execute({ limit: 3, language: 'TypeScript', sinceDays: 7 }, exec())
+    const url = String(fetchMock.mock.calls[0]?.[0])
+    expect(url).toContain('created%3A%3E')
+    expect(url).toContain('language%3ATypeScript')
+    expect(url).toContain('sort=stars')
+  })
+})
+
+describe('github_user_repos tool', () => {
+  it('lists a user\'s repositories sorted by stars', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse([
+      { full_name: 'u/big', description: 'd', stargazers_count: 99, language: 'TS', updated_at: '2026-01-01T00:00:00Z', html_url: 'u' },
+    ]))
+    vi.stubGlobal('fetch', fetchMock)
+    const userRepos = defineTools(resolvedConfig())[9]
+    const result = await userRepos.execute({ username: 'deepseek-ai' }, exec())
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('/users/deepseek-ai/repos?type=owner&sort=stars')
+    expect(result).toMatchObject({ username: 'deepseek-ai', repos: [{ fullName: 'u/big', stars: 99 }] })
   })
 })
