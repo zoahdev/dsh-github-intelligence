@@ -18,7 +18,7 @@ pnpm test
 
 Result: 3 test files, 35 tests, all passed. Coverage includes extended repo parsing, issue/PR filtering, contributors, commits, TTL caching, rate-limit/404 errors, registration of 170+ tools, the deep report, catalog completeness (unique names, 100+ tool floor), generated-tool execution (GitHub lists, npm search unwrapping, Hacker News item resolution, ecosystem stats, GitLab/Gitee, file content, the v2.3.0 tool set), and input validation.
 
-In addition, every v2.3.0 tool passed a real-network smoke against the public GitHub API (scripts/v230-network-smoke.mjs): `github_user_repos`, `github_user_social_accounts`, `github_repo_releases`, `github_repo_issues`, `github_repo_pulls`, `github_repo_contributors`, `github_repo_subscribers`, `github_repo_collaborators`, `github_repo_git_refs`, `github_repo_punch_card` (168 punches), `github_repo_security_advisories`, and `github_search_repositories`.
+In addition, every v2.3.0 tool passed a real-network smoke against the public GitHub API (scripts/v230-network-smoke.mjs): `github_user_repositories`, `github_user_social_accounts`, `github_repo_releases`, `github_repo_issues`, `github_repo_pulls`, `github_repo_contributors`, `github_repo_subscribers`, `github_repo_collaborators`, `github_repo_git_refs`, `github_repo_punch_card` (168 punches), `github_repo_security_advisories`, and `github_search_repositories`.
 
 ## 3. Package and install into a dsh profile
 
