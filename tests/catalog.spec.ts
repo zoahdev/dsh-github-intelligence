@@ -119,4 +119,111 @@ describe('generated tools', () => {
     const result = await tool.execute({ owner: 'x', repo: 'y', path: 'README.md' }, exec())
     expect(result).toMatchObject({ item: { path: 'README.md', contentText: 'hello' } })
   })
+
+  it('ships the v2.3.0 tool set (releases/issues/pulls lists, users, orgs, refs, punch card, advisories, search)', () => {
+    for (const name of [
+      'github_repo_releases', 'github_repo_issues', 'github_repo_pulls',
+      'github_user_repos', 'github_user_social_accounts', 'github_repo_contributors',
+      'github_repo_subscribers', 'github_repo_collaborators', 'github_repo_git_refs',
+      'github_repo_punch_card', 'github_repo_security_advisories', 'github_search_repositories',
+    ]) {
+      expect(catalog.some((spec) => spec.name === name), `missing ${name}`).toBe(true)
+    }
+  })
+
+  it('filters pull requests out of the repo issues list', async () => {
+    const fetch = fetcherMock(() => [
+      { number: 1, title: 'issue', state: 'open', user: { login: 'u' }, comments: 0, created_at: null, html_url: 'https://x/1' },
+      { number: 2, title: 'pr', state: 'open', user: { login: 'u' }, comments: 0, created_at: null, html_url: 'https://x/2', pull_request: {} },
+    ])
+    const spec = catalog.find((s) => s.name === 'github_repo_issues')
+    const tool = buildCatalogTool(fetch, spec!)
+    const result = await tool.execute({ owner: 'a', repo: 'b' }, exec())
+    expect(result).toMatchObject({ source: 'a/b', items: [{ number: 1, title: 'issue' }] })
+    expect((result as { items: unknown[] }).items).toHaveLength(1)
+  })
+
+  it('parses repository search results through the items wrapper', async () => {
+    const fetch = fetcherMock(() => ({
+      items: [{ full_name: 'a/b', description: 'd', stargazers_count: 9, language: 'TS', updated_at: null, html_url: 'https://x/r' }],
+    }))
+    const spec = catalog.find((s) => s.name === 'github_search_repositories')
+    const tool = buildCatalogTool(fetch, spec!)
+    const result = await tool.execute({ q: 'harness' }, exec())
+    expect(result).toMatchObject({ source: 'query: harness', items: [{ fullName: 'a/b', stars: 9 }] })
+  })
+
+  it('parses social accounts, collaborators, git refs, punch card and advisories', async () => {
+    const cases: Array<{ name: string; args: Record<string, unknown>; fixture: unknown; expected: Record<string, unknown> }> = [
+      {
+        name: 'github_user_social_accounts', args: { username: 'z' },
+        fixture: [{ provider: 'twitter', url: 'https://x/z' }],
+        expected: { source: '@z', items: [{ provider: 'twitter', url: 'https://x/z' }] },
+      },
+      {
+        name: 'github_repo_collaborators', args: { owner: 'a', repo: 'b' },
+        fixture: [{ login: 'u', avatar_url: null, html_url: 'https://x/u', permissions: { push: true } }],
+        expected: { items: [{ login: 'u', permission: 'push' }] },
+      },
+      {
+        name: 'github_repo_git_refs', args: { owner: 'a', repo: 'b', ref: 'heads/main' },
+        fixture: [{ ref: 'refs/heads/main', object: { type: 'commit', sha: 'abc' }, html_url: null }],
+        expected: { items: [{ ref: 'refs/heads/main', type: 'commit', sha: 'abc' }] },
+      },
+      {
+        name: 'github_repo_punch_card', args: { owner: 'a', repo: 'b' },
+        fixture: [[0, 10, 5], [1, 9, 2]],
+        expected: { items: [{ day: 0, hour: 10, count: 5 }, { day: 1, hour: 9, count: 2 }] },
+      },
+      {
+        name: 'github_repo_security_advisories', args: { owner: 'a', repo: 'b' },
+        fixture: [{ ghsa_id: 'GHSA-1', summary: 's', severity: 'high', published_at: '2026-01-01T00:00:00Z', updated_at: null, html_url: 'https://x/a' }],
+        expected: { items: [{ ghsaId: 'GHSA-1', severity: 'high' }] },
+      },
+    ]
+    for (const c of cases) {
+      const fetch = fetcherMock(() => c.fixture)
+      const spec = catalog.find((s) => s.name === c.name)
+      const tool = buildCatalogTool(fetch, spec!)
+      const result = await tool.execute(c.args, exec())
+      expect(result).toMatchObject(c.expected)
+    }
+  })
+
+  it('parses repo releases, pulls, contributors, subscribers and user repos', async () => {
+    const cases: Array<{ name: string; args: Record<string, unknown>; fixture: unknown; expected: Record<string, unknown> }> = [
+      {
+        name: 'github_repo_releases', args: { owner: 'a', repo: 'b' },
+        fixture: [{ tag_name: 'v2', name: null, published_at: '2026-02-01T00:00:00Z', prerelease: true, html_url: 'https://x/r' }],
+        expected: { items: [{ tagName: 'v2', prerelease: true }] },
+      },
+      {
+        name: 'github_repo_pulls', args: { owner: 'a', repo: 'b' },
+        fixture: [{ number: 3, title: 'pr', state: 'open', user: { login: 'u' }, created_at: null, merged_at: null, html_url: 'https://x/p' }],
+        expected: { items: [{ number: 3, title: 'pr', mergedAt: null }] },
+      },
+      {
+        name: 'github_repo_contributors', args: { owner: 'a', repo: 'b' },
+        fixture: [{ login: 'u', contributions: 5, avatar_url: null, html_url: 'https://x/u' }],
+        expected: { items: [{ login: 'u', contributions: 5 }] },
+      },
+      {
+        name: 'github_repo_subscribers', args: { owner: 'a', repo: 'b' },
+        fixture: [{ login: 'w', name: null, avatar_url: null, html_url: 'https://x/w', type: 'User' }],
+        expected: { items: [{ login: 'w', type: 'User' }] },
+      },
+      {
+        name: 'github_user_repos', args: { username: 'z' },
+        fixture: [{ full_name: 'z/r', description: 'd', stargazers_count: 1, language: 'TS', updated_at: null, html_url: 'https://x/r' }],
+        expected: { source: '@z', items: [{ fullName: 'z/r', stars: 1 }] },
+      },
+    ]
+    for (const c of cases) {
+      const fetch = fetcherMock(() => c.fixture)
+      const spec = catalog.find((s) => s.name === c.name)
+      const tool = buildCatalogTool(fetch, spec!)
+      const result = await tool.execute(c.args, exec())
+      expect(result).toMatchObject(c.expected)
+    }
+  })
 })
