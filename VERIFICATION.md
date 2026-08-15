@@ -16,7 +16,7 @@ Result: `tsc -p tsconfig.json` exits 0, emits `lib/` with `index.js`, `github.js
 pnpm test
 ```
 
-Result: 3 test files, 27 tests, all passed. Coverage includes extended repo parsing, issue/PR filtering, contributors, commits, TTL caching, rate-limit/404 errors, registration of 140+ tools, the deep report, catalog completeness (unique names, 100+ tool floor), generated-tool execution (GitHub lists, npm search unwrapping, Hacker News item resolution, ecosystem stats), and input validation.
+Result: 3 test files, 30 tests, all passed. Coverage includes extended repo parsing, issue/PR filtering, contributors, commits, TTL caching, rate-limit/404 errors, registration of 160+ tools, the deep report, catalog completeness (unique names, 100+ tool floor), generated-tool execution (GitHub lists, npm search unwrapping, Hacker News item resolution, ecosystem stats, GitLab/Gitee, file content), and input validation.
 
 ## 3. Package and install into a dsh profile
 
