@@ -52,6 +52,16 @@ function unwrap(raw: unknown, wrap?: string): unknown {
       if (Array.isArray(data) && data.length > 0 && typeof data[0] === 'object' && 'data' in (data[0] as Record<string, unknown>)) {
         return (data as Array<Record<string, unknown>>).map((entry) => entry.data)
       }
+      // Real Reddit shape: { data: { children: [{ data: {...} }] } }
+      if (data !== null && typeof data === 'object') {
+        const children = (data as Record<string, unknown>).children
+        if (Array.isArray(children)) {
+          return children.map((entry) => {
+            const item = entry as Record<string, unknown>
+            return item.data ?? entry
+          })
+        }
+      }
       return raw
     }
     case 'crate': return r.crate
@@ -658,6 +668,167 @@ const parsers: Record<string, (raw: unknown, name?: unknown) => unknown> = {
       htmlUrl: s(r.html_url) ?? '',
     }
   },
+  gitlabIssue(raw) {
+    const r = raw as Record<string, unknown>
+    const author = r.author as Record<string, unknown> | null
+    return {
+      iid: n(r.iid),
+      title: s(r.title) ?? '',
+      state: s(r.state) ?? '',
+      author: author !== null && typeof author === 'object' ? s(author.username) ?? 'unknown' : 'unknown',
+      createdAt: d(r.created_at),
+      comments: n(r.user_notes_count),
+      webUrl: s(r.web_url) ?? '',
+    }
+  },
+  gitlabMr(raw) {
+    const r = raw as Record<string, unknown>
+    const author = r.author as Record<string, unknown> | null
+    return {
+      iid: n(r.iid),
+      title: s(r.title) ?? '',
+      state: s(r.state) ?? '',
+      author: author !== null && typeof author === 'object' ? s(author.username) ?? 'unknown' : 'unknown',
+      createdAt: d(r.created_at),
+      mergedAt: d(r.merged_at),
+      webUrl: s(r.web_url) ?? '',
+    }
+  },
+  gitlabCommit(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      sha: s(r.short_id) ?? s(r.id) ?? '',
+      title: s(r.title) ?? '',
+      author: s(r.author_name),
+      date: d(r.created_at) ?? d(r.committed_date),
+      webUrl: s(r.web_url),
+    }
+  },
+  gitlabBranch(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      name: s(r.name) ?? '',
+      default: r.default === true,
+      protected: r.protected === true,
+      merged: r.merged === true,
+      webUrl: s(r.web_url),
+    }
+  },
+  giteeRelease(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      tagName: s(r.tag_name) ?? '',
+      name: s(r.name),
+      createdAt: d(r.created_at),
+      htmlUrl: s(r.html_url) ?? '',
+    }
+  },
+  giteeIssue(raw) {
+    const r = raw as Record<string, unknown>
+    const user = r.user as Record<string, unknown> | null
+    return {
+      number: n(r.number),
+      title: s(r.title) ?? '',
+      state: s(r.issue_state) ?? s(r.state) ?? '',
+      user: user !== null && typeof user === 'object' ? s(user.login) ?? 'unknown' : 'unknown',
+      comments: n(r.comments),
+      createdAt: d(r.created_at),
+      htmlUrl: s(r.html_url) ?? '',
+    }
+  },
+  giteeCommit(raw) {
+    const r = raw as Record<string, unknown>
+    const commit = r.commit as Record<string, unknown> | null
+    const author = commit !== null && typeof commit === 'object' ? (commit.author as Record<string, unknown> | null) : null
+    return {
+      sha: s(r.sha) ?? '',
+      message: commit !== null && typeof commit === 'object' ? s(commit.message) ?? '' : '',
+      author: author !== null && typeof author === 'object' ? s(author.name) : null,
+      date: author !== null && typeof author === 'object' ? d(author.date) : null,
+      htmlUrl: s(r.html_url) ?? '',
+    }
+  },
+  soAnswer(raw) {
+    const r = raw as Record<string, unknown>
+    const owner = r.owner as Record<string, unknown> | null
+    const created = n(r.creation_date) > 0 ? new Date(n(r.creation_date) * 1000).toISOString() : null
+    return {
+      answerId: n(r.answer_id),
+      score: n(r.score),
+      accepted: r.is_accepted === true,
+      author: owner !== null && typeof owner === 'object' ? s(owner.display_name) ?? 'unknown' : 'unknown',
+      createdAt: created !== null ? created.slice(0, 10) : null,
+      link: s(r.link) ?? '',
+    }
+  },
+  soTag(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      name: s(r.name) ?? '',
+      count: n(r.count),
+    }
+  },
+  devtoArticle(raw) {
+    const r = raw as Record<string, unknown>
+    const user = r.user as Record<string, unknown> | null
+    return {
+      id: n(r.id),
+      title: s(r.title) ?? '',
+      description: s(r.description),
+      publishedAt: d(r.published_at) ?? d(r.created_at),
+      tags: Array.isArray(r.tag_list) ? (r.tag_list as unknown[]).filter((x): x is string => typeof x === 'string') : [],
+      author: user !== null && typeof user === 'object' ? s(user.username) ?? 'unknown' : 'unknown',
+      reactions: n(r.positive_reactions_count),
+      comments: n(r.comments_count),
+      url: s(r.url) ?? `https://dev.to${s(r.path) ?? ''}`,
+    }
+  },
+  devtoArticleDetail(raw) {
+    const r = raw as Record<string, unknown>
+    const user = r.user as Record<string, unknown> | null
+    return {
+      id: n(r.id),
+      title: s(r.title) ?? '',
+      description: s(r.description),
+      bodyMarkdown: s(r.body_markdown),
+      readingMinutes: n(r.reading_time_minutes),
+      publishedAt: d(r.published_at) ?? d(r.created_at),
+      tags: Array.isArray(r.tag_list) ? (r.tag_list as unknown[]).filter((x): x is string => typeof x === 'string') : [],
+      author: user !== null && typeof user === 'object' ? s(user.username) ?? 'unknown' : 'unknown',
+      url: s(r.url) ?? `https://dev.to${s(r.path) ?? ''}`,
+    }
+  },
+  devtoUser(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      id: n(r.id),
+      username: s(r.username) ?? '',
+      name: s(r.name),
+      summary: s(r.summary),
+      location: s(r.location),
+      websiteUrl: s(r.website_url),
+      profileImage: s(r.profile_image),
+      joinedAt: d(r.joined_at),
+    }
+  },
+  npmDependencies(raw) {
+    const r = raw as Record<string, unknown>
+    const distTags = r['dist-tags'] as Record<string, unknown> | null
+    const latest = distTags !== null && typeof distTags === 'object' ? s(distTags.latest) : null
+    const versions = r.versions as Record<string, unknown> | null
+    const entry = versions !== null && typeof versions === 'object' && latest !== null
+      ? versions[latest] as Record<string, unknown> | null
+      : null
+    const deps = entry !== null && typeof entry === 'object' ? entry.dependencies as Record<string, unknown> | null : null
+    const list = deps !== null && typeof deps === 'object'
+      ? Object.entries(deps).map(([name, range]) => ({ name, range: typeof range === 'string' ? range : String(range) }))
+      : []
+    return {
+      package: s(r.name) ?? '',
+      version: latest ?? 'unknown',
+      deps: list,
+    }
+  },
   deploymentStatus(raw) {
     const r = raw as Record<string, unknown>
     return {
@@ -1210,6 +1381,45 @@ const itemSchemas: Record<string, object> = {
   fileContent: { type: 'object', additionalProperties: false, properties: {
     name: strSchema(), path: strSchema(), size: intSchema(), htmlUrl: strSchema(), contentText: strSchema(),
   } },
+  gitlabIssue: { type: 'object', additionalProperties: false, properties: {
+    iid: intSchema(), title: strSchema(), state: strSchema(), author: strSchema(), createdAt: nullableStr(), comments: intSchema(), webUrl: strSchema(),
+  } },
+  gitlabMr: { type: 'object', additionalProperties: false, properties: {
+    iid: intSchema(), title: strSchema(), state: strSchema(), author: strSchema(), createdAt: nullableStr(), mergedAt: nullableStr(), webUrl: strSchema(),
+  } },
+  gitlabCommit: { type: 'object', additionalProperties: false, properties: {
+    sha: strSchema(), title: strSchema(), author: nullableStr(), date: nullableStr(), webUrl: nullableStr(),
+  } },
+  gitlabBranch: { type: 'object', additionalProperties: false, properties: {
+    name: strSchema(), default: boolSchema(), protected: boolSchema(), merged: boolSchema(), webUrl: nullableStr(),
+  } },
+  giteeRelease: { type: 'object', additionalProperties: false, properties: {
+    tagName: strSchema(), name: nullableStr(), createdAt: nullableStr(), htmlUrl: strSchema(),
+  } },
+  giteeIssue: { type: 'object', additionalProperties: false, properties: {
+    number: intSchema(), title: strSchema(), state: strSchema(), user: strSchema(), comments: intSchema(), createdAt: nullableStr(), htmlUrl: strSchema(),
+  } },
+  giteeCommit: { type: 'object', additionalProperties: false, properties: {
+    sha: strSchema(), message: strSchema(), author: nullableStr(), date: nullableStr(), htmlUrl: strSchema(),
+  } },
+  soAnswer: { type: 'object', additionalProperties: false, properties: {
+    answerId: intSchema(), score: intSchema(), accepted: boolSchema(), author: strSchema(), createdAt: nullableStr(), link: strSchema(),
+  } },
+  soTag: { type: 'object', additionalProperties: false, properties: {
+    name: strSchema(), count: intSchema(),
+  } },
+  devtoArticle: { type: 'object', additionalProperties: false, properties: {
+    id: intSchema(), title: strSchema(), description: nullableStr(), publishedAt: nullableStr(), tags: { type: 'array', required: true, items: { type: 'string' } }, author: strSchema(), reactions: intSchema(), comments: intSchema(), url: strSchema(),
+  } },
+  devtoArticleDetail: { type: 'object', additionalProperties: false, properties: {
+    id: intSchema(), title: strSchema(), description: nullableStr(), bodyMarkdown: nullableStr(), readingMinutes: intSchema(), publishedAt: nullableStr(), tags: { type: 'array', required: true, items: { type: 'string' } }, author: strSchema(), url: strSchema(),
+  } },
+  devtoUser: { type: 'object', additionalProperties: false, properties: {
+    id: intSchema(), username: strSchema(), name: nullableStr(), summary: nullableStr(), location: nullableStr(), websiteUrl: nullableStr(), profileImage: nullableStr(), joinedAt: nullableStr(),
+  } },
+  npmDependencies: { type: 'object', additionalProperties: false, properties: {
+    package: strSchema(), version: strSchema(), deps: { type: 'array', required: true, items: { type: 'object', additionalProperties: false, properties: { name: strSchema(), range: strSchema() } } },
+  } },
 }
 
 const objectSchemas: Record<string, object> = {
@@ -1393,6 +1603,19 @@ const objectFormatters: Record<string, (item: Record<string, unknown>) => string
   npmDownloads: (i) => `${i.package}: ${i.downloads} downloads (${i.start} → ${i.end})`,
   gitlabProjectDetail: (i) => `${i.name} (★${i.stars}, ${i.forks} forks, ${i.visibility ?? '?'}) — ${i.description ?? ''}\n${i.webUrl}`,
   giteeRepoDetail: (i) => `${i.fullName} (★${i.stars}, ${i.forks} forks, ${i.language ?? 'n/a'}, ${i.license ?? 'n/a'}) — ${i.description ?? ''}\n${i.htmlUrl}`,
+  gitlabIssue: (i) => `!${i.iid} ${i.title} [${i.state}] (@${i.author}, ${i.comments} comments) ${i.webUrl}`,
+  gitlabMr: (i) => `!${i.iid} ${i.title} [${i.state}]${i.mergedAt ? ' [merged]' : ''} (@${i.author}) ${i.webUrl}`,
+  gitlabCommit: (i) => `${i.sha} ${i.title} (${i.author ?? '?'}, ${i.date ?? '?'}) ${i.webUrl ?? ''}`,
+  gitlabBranch: (i) => `${i.name}${i.default ? ' [default]' : ''}${i.protected ? ' [protected]' : ''} ${i.webUrl ?? ''}`,
+  giteeRelease: (i) => `${i.tagName} (${i.createdAt ?? '?'}) ${i.htmlUrl}`,
+  giteeIssue: (i) => `#${i.number} ${i.title} [${i.state}] (@${i.user}, ${i.comments} comments) ${i.htmlUrl}`,
+  giteeCommit: (i) => `${i.sha} ${i.message} (${i.author ?? '?'}, ${i.date ?? '?'}) ${i.htmlUrl}`,
+  soAnswer: (i) => `#${i.answerId} ${i.accepted ? '[accepted] ' : ''}(${i.score} votes, @${i.author}, ${i.createdAt ?? '?'}) ${i.link}`,
+  soTag: (i) => `${i.name} (${i.count} questions)`,
+  devtoArticle: (i) => `${i.title} [${i.reactions} reactions, ${i.comments} comments] by @${i.author} (${i.publishedAt ?? '?'})\n${i.url}`,
+  devtoArticleDetail: (i) => `${i.title} (${i.readingMinutes} min read, by @${i.author}, ${i.publishedAt ?? '?'})\n${i.description ?? ''}\n${i.url}`,
+  devtoUser: (i) => `@${i.username} (${i.name ?? ''}) — ${i.summary ?? ''}${i.location ? ` · ${i.location}` : ''} ${i.websiteUrl ?? ''}`,
+  npmDependencies: (i) => `${i.package}@${i.version} dependencies:\n${(i.deps as Array<Record<string, unknown>>).slice(0, 20).map((d) => `- ${d.name}@${d.range}`).join('\n')}`,
   soUser: (i) => `${i.displayName} (reputation ${i.reputation}${i.location ? `, ${i.location}` : ''}) ${i.link}`,
   redditUser: (i) => `u/${i.name} (${i.linkKarma} link karma, ${i.commentKarma} comment karma, since ${i.created ?? '?'})`,
 }
@@ -1526,6 +1749,7 @@ export const catalog: ToolSpec[] = [
   L({ name: 'npm_package_versions', description: 'Version history of an npm package with publish dates.', kind: 'object', itemType: 'npmVersions', baseUrl: 'https://registry.npmjs.org', path: '/{package}' }),
   L({ name: 'npm_downloads_last_week', description: 'Download counts of an npm package over the last week.', kind: 'object', itemType: 'npmDownloads', baseUrl: 'https://api.npmjs.org', path: '/downloads/point/last-week/{package}' }),
   L({ name: 'npm_downloads_last_month', description: 'Download counts of an npm package over the last month.', kind: 'object', itemType: 'npmDownloads', baseUrl: 'https://api.npmjs.org', path: '/downloads/point/last-month/{package}' }),
+  L({ name: 'npm_package_dependencies', description: 'Direct runtime dependencies of an npm package at its latest version.', kind: 'object', itemType: 'npmDependencies', baseUrl: 'https://registry.npmjs.org', path: '/{package}' }),
   // PyPI
   L({ name: 'pypi_project', description: 'Metadata of a PyPI project: summary, latest version, author, license, Python requirement.', kind: 'object', itemType: 'pypiProject', baseUrl: 'https://pypi.org/pypi', path: '/{package}/json' }),
   L({ name: 'pypi_versions', description: 'Version history of a PyPI project with upload dates and file counts.', kind: 'object', itemType: 'pypiVersions', baseUrl: 'https://pypi.org/pypi', path: '/{package}/json' }),
@@ -1550,14 +1774,18 @@ export const catalog: ToolSpec[] = [
   L({ name: 'hn_item', description: 'A single Hacker News item (story or comment) by id.', kind: 'object', itemType: 'hnItem', baseUrl: 'https://hacker-news.firebaseio.com/v0', path: '/item/{itemId}.json' }),
   L({ name: 'hn_user', description: 'A Hacker News user profile by username.', kind: 'object', itemType: 'hnUser', baseUrl: 'https://hacker-news.firebaseio.com/v0', path: '/user/{username}.json' }),
   // Stack Overflow
-  L({ name: 'so_search', description: 'Search Stack Overflow questions by keywords.', kind: 'list', itemType: 'soQuestion', baseUrl: 'https://api.stackexchange.com/2.3', path: '/search', wrap: 'items', params: { q: { type: 'string', required: true, description: 'Search keywords (intitle).' }, limit: { type: 'number', default: 5, description: 'How many questions (1-50).' } } }),
-  L({ name: 'so_questions_by_tag', description: 'Top-voted Stack Overflow questions for a tag.', kind: 'list', itemType: 'soQuestion', baseUrl: 'https://api.stackexchange.com/2.3', path: '/questions', wrap: 'items', params: { tagged: { type: 'string', required: true, description: 'Tag, e.g. typescript.' }, limit: { type: 'number', default: 5, description: 'How many questions (1-50).' } } }),
-  L({ name: 'so_question', description: 'A Stack Overflow question by id with its body text.', kind: 'object', itemType: 'soQuestionDetail', baseUrl: 'https://api.stackexchange.com/2.3', path: '/questions/{questionId}', wrap: 'items' }),
+  L({ name: 'so_search', description: 'Search Stack Overflow questions by keywords.', kind: 'list', itemType: 'soQuestion', baseUrl: 'https://api.stackexchange.com/2.3', path: '/search', wrap: 'items', params: { q: { type: 'string', required: true, description: 'Search keywords (intitle).' }, site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' }, limit: { type: 'number', default: 5, description: 'How many questions (1-50).' } } }),
+  L({ name: 'so_questions_by_tag', description: 'Top-voted Stack Overflow questions for a tag.', kind: 'list', itemType: 'soQuestion', baseUrl: 'https://api.stackexchange.com/2.3', path: '/questions', wrap: 'items', params: { tagged: { type: 'string', required: true, description: 'Tag, e.g. typescript.' }, site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' }, limit: { type: 'number', default: 5, description: 'How many questions (1-50).' } } }),
+  L({ name: 'so_question', description: 'A Stack Overflow question by id with its body text.', kind: 'object', itemType: 'soQuestionDetail', baseUrl: 'https://api.stackexchange.com/2.3', path: '/questions/{questionId}', wrap: 'items', params: { site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' } } }),
+  L({ name: 'so_question_answers', description: 'Top-voted answers to a Stack Overflow question.', kind: 'list', itemType: 'soAnswer', baseUrl: 'https://api.stackexchange.com/2.3', path: '/questions/{questionId}/answers', wrap: 'items', params: { site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' }, limit: { type: 'number', default: 5, description: 'How many answers (1-50).' } } }),
+  L({ name: 'so_top_tags', description: 'Most popular Stack Overflow tags by question count.', kind: 'list', itemType: 'soTag', baseUrl: 'https://api.stackexchange.com/2.3', path: '/tags', wrap: 'items', params: { site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' }, limit: { type: 'number', default: 10, description: 'How many tags (1-50).' } } }),
   // Reddit
   L({ name: 'reddit_subreddit_hot', description: 'Hot posts of a subreddit.', kind: 'list', itemType: 'redditPost', baseUrl: 'https://www.reddit.com', path: '/r/{subreddit}/hot.json', wrap: 'children', params: { limit: { type: 'number', default: 5, description: 'How many posts (1-25).' } } }),
   L({ name: 'reddit_subreddit_new', description: 'Newest posts of a subreddit.', kind: 'list', itemType: 'redditPost', baseUrl: 'https://www.reddit.com', path: '/r/{subreddit}/new.json', wrap: 'children', params: { limit: { type: 'number', default: 5, description: 'How many posts (1-25).' } } }),
   L({ name: 'reddit_subreddit_top', description: 'Top posts of a subreddit.', kind: 'list', itemType: 'redditPost', baseUrl: 'https://www.reddit.com', path: '/r/{subreddit}/top.json', wrap: 'children', params: { limit: { type: 'number', default: 5, description: 'How many posts (1-25).' } } }),
   L({ name: 'reddit_subreddit_about', description: 'Subreddit stats: subscribers, active users, description.', kind: 'object', itemType: 'redditAbout', baseUrl: 'https://www.reddit.com', path: '/r/{subreddit}/about.json', wrap: 'data' }),
+  L({ name: 'reddit_subreddit_rising', description: 'Rising posts of a subreddit.', kind: 'list', itemType: 'redditPost', baseUrl: 'https://www.reddit.com', path: '/r/{subreddit}/rising.json', wrap: 'children', params: { limit: { type: 'number', default: 5, description: 'How many posts (1-25).' } } }),
+  L({ name: 'reddit_subreddit_controversial', description: 'Controversial posts of a subreddit.', kind: 'list', itemType: 'redditPost', baseUrl: 'https://www.reddit.com', path: '/r/{subreddit}/controversial.json', wrap: 'children', params: { limit: { type: 'number', default: 5, description: 'How many posts (1-25).' } } }),
   L({ name: 'reddit_search', description: 'Search Reddit posts across all subreddits.', kind: 'list', itemType: 'redditPost', baseUrl: 'https://www.reddit.com', path: '/search.json', wrap: 'children', params: { q: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', default: 5, description: 'How many posts (1-25).' } } }),
   // dsh ecosystem itself
   L({ name: 'dsh_ecosystem_stats', description: 'Current number of plugins tracked by the awesome-dsh-plugin registry.', kind: 'object', itemType: 'dshEcosystemStats', baseUrl: 'https://awesome-dsh-plugin.com', path: '/count.json' }),
@@ -1565,10 +1793,17 @@ export const catalog: ToolSpec[] = [
   L({ name: 'gitlab_search', description: 'Search projects on GitLab.com.', kind: 'list', itemType: 'gitlabProject', baseUrl: 'https://gitlab.com/api/v4', path: '/projects', params: { q: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', default: 5, description: 'How many projects (1-50).' } } }),
   L({ name: 'gitlab_project', description: 'Details of a GitLab project by numeric id.', kind: 'object', itemType: 'gitlabProjectDetail', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}' }),
   L({ name: 'gitlab_group_projects', description: 'Projects of a GitLab group.', kind: 'list', itemType: 'gitlabProject', baseUrl: 'https://gitlab.com/api/v4', path: '/groups/{group}/projects', params: { limit: { type: 'number', default: 5, description: 'How many projects (1-50).' } } }),
+  L({ name: 'gitlab_project_issues', description: 'Issues of a GitLab project (use a path id like gitlab-org/gitlab).', kind: 'list', itemType: 'gitlabIssue', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}/issues', params: { state: { type: 'string', enum: ['opened', 'closed', 'all'], description: 'Issue state.' }, limit: { type: 'number', default: 5, description: 'How many issues (1-50).' } } }),
+  L({ name: 'gitlab_project_merge_requests', description: 'Merge requests of a GitLab project.', kind: 'list', itemType: 'gitlabMr', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}/merge_requests', params: { state: { type: 'string', enum: ['opened', 'closed', 'merged', 'all'], description: 'Merge request state.' }, limit: { type: 'number', default: 5, description: 'How many merge requests (1-50).' } } }),
+  L({ name: 'gitlab_project_commits', description: 'Recent commits of a GitLab project.', kind: 'list', itemType: 'gitlabCommit', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}/repository/commits', params: { limit: { type: 'number', default: 5, description: 'How many commits (1-50).' } } }),
+  L({ name: 'gitlab_project_branches', description: 'Branches of a GitLab project.', kind: 'list', itemType: 'gitlabBranch', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}/repository/branches', params: { limit: { type: 'number', default: 5, description: 'How many branches (1-50).' } } }),
   // Gitee
   L({ name: 'gitee_search', description: 'Search repositories on Gitee (Chinese developer platform).', kind: 'list', itemType: 'giteeRepo', baseUrl: 'https://gitee.com/api/v5', path: '/search/repositories', params: { q: { type: 'string', required: true, description: 'Search query.' }, per_page: { type: 'number', default: 5, description: 'How many repositories (1-50).' } } }),
   L({ name: 'gitee_repo', description: 'Details of a Gitee repository.', kind: 'object', itemType: 'giteeRepoDetail', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}' }),
   L({ name: 'gitee_user_repos', description: 'Repositories of a Gitee user.', kind: 'list', itemType: 'giteeRepo', baseUrl: 'https://gitee.com/api/v5', path: '/users/{username}/repos', params: { per_page: { type: 'number', default: 5, description: 'How many repositories (1-50).' } } }),
+  L({ name: 'gitee_repo_releases', description: 'Releases of a Gitee repository.', kind: 'list', itemType: 'giteeRelease', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}/releases', params: { per_page: { type: 'number', default: 5, description: 'How many releases (1-50).' } } }),
+  L({ name: 'gitee_repo_issues', description: 'Issues of a Gitee repository.', kind: 'list', itemType: 'giteeIssue', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}/issues', params: { state: { type: 'string', enum: ['open', 'closed', 'all'], description: 'Issue state.' }, per_page: { type: 'number', default: 5, description: 'How many issues (1-50).' } } }),
+  L({ name: 'gitee_repo_commits', description: 'Recent commits of a Gitee repository.', kind: 'list', itemType: 'giteeCommit', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}/commits', params: { per_page: { type: 'number', default: 5, description: 'How many commits (1-50).' } } }),
   // GitHub: comments, deployments, pages, stats, content
   L({ name: 'github_repo_commit_comment', description: 'A single commit comment by id.', kind: 'object', itemType: 'comment', path: '/repos/{owner}/{repo}/comments/{commentId}' }),
   L({ name: 'github_repo_issue_comment', description: 'A single issue comment by id.', kind: 'object', itemType: 'comment', path: '/repos/{owner}/{repo}/issues/comments/{commentId}' }),
@@ -1595,8 +1830,12 @@ export const catalog: ToolSpec[] = [
   L({ name: 'hn_job', description: 'Latest job posts on Hacker News.', kind: 'list', itemType: 'hnItem', baseUrl: 'https://hacker-news.firebaseio.com/v0', path: '/jobstories.json', params: { limit: { type: 'number', default: 5, description: 'How many jobs (1-20).' } } }),
   L({ name: 'hn_best', description: 'Highest-scoring stories on Hacker News right now.', kind: 'list', itemType: 'hnItem', baseUrl: 'https://hacker-news.firebaseio.com/v0', path: '/beststories.json', params: { limit: { type: 'number', default: 5, description: 'How many stories (1-20).' } } }),
   // Stack Overflow / Reddit / crates extras
-  L({ name: 'so_user', description: 'A Stack Overflow user profile by id.', kind: 'object', itemType: 'soUser', baseUrl: 'https://api.stackexchange.com/2.3', path: '/users/{userId}', wrap: 'items' }),
+  L({ name: 'so_user', description: 'A Stack Overflow user profile by id.', kind: 'object', itemType: 'soUser', baseUrl: 'https://api.stackexchange.com/2.3', path: '/users/{userId}', wrap: 'items', params: { site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' } } }),
   L({ name: 'reddit_user', description: 'A Reddit user profile by username.', kind: 'object', itemType: 'redditUser', baseUrl: 'https://www.reddit.com', path: '/user/{username}/about.json', wrap: 'data' }),
+  // dev.to
+  L({ name: 'devto_articles', description: 'Recent dev.to articles, optionally filtered by tag or top-of-week.', kind: 'list', itemType: 'devtoArticle', baseUrl: 'https://dev.to/api', path: '/articles', params: { tag: { type: 'string', description: 'Filter by tag, e.g. javascript.' }, top: { type: 'number', description: '1-7: top articles of the period.' }, per_page: { type: 'number', default: 5, description: 'How many articles (1-50).' } } }),
+  L({ name: 'devto_article', description: 'A dev.to article by id with full markdown body.', kind: 'object', itemType: 'devtoArticleDetail', baseUrl: 'https://dev.to/api', path: '/articles/{articleId}' }),
+  L({ name: 'devto_user', description: 'A dev.to user profile by id.', kind: 'object', itemType: 'devtoUser', baseUrl: 'https://dev.to/api', path: '/users/{userId}' }),
   L({ name: 'crates_owners', description: 'Owners of a Rust crate.', kind: 'list', itemType: 'user', baseUrl: 'https://crates.io/api/v1', path: '/crates/{crate}/owners', wrap: 'users', params: { limit: { type: 'number', default: 5, description: 'How many owners (1-50).' } } }),
 ]
 
@@ -1778,23 +2017,28 @@ export function buildCatalogTool(fetcher: Fetcher, spec: ToolSpec) {
       const unwrapped = unwrap(raw, spec.wrap)
       const payload = unwrapped as Record<string, unknown>
       const data = Array.isArray(unwrapped) ? unwrapped : Array.isArray(payload.items) ? payload.items : []
+      // Enforce `limit` locally: some APIs (GitHub, GitLab, StackExchange)
+      // ignore a `limit` query param and return their own default page size.
+      const limitSpec = spec.params?.limit
+      const limit = limitSpec !== undefined ? clamp(Number(args.limit ?? limitSpec.default ?? 5), 1, 50) : undefined
+      const bounded = limit !== undefined ? data.slice(0, limit) : data
       if (spec.name === 'github_search_issues') {
-        const filtered = data.filter((entry) => (entry as Record<string, unknown>).pull_request === undefined)
+        const filtered = bounded.filter((entry) => (entry as Record<string, unknown>).pull_request === undefined)
         return { source, itemType, items: filtered.map((entry) => parseItem(itemType, entry)) }
       }
       if (spec.name === 'github_search_pulls') {
-        const filtered = data.filter((entry) => (entry as Record<string, unknown>).pull_request !== undefined)
+        const filtered = bounded.filter((entry) => (entry as Record<string, unknown>).pull_request !== undefined)
         return { source, itemType, items: filtered.map((entry) => parseItem(itemType, entry)) }
       }
       if (spec.name === 'github_repo_issues') {
-        const filtered = data.filter((entry) => (entry as Record<string, unknown>).pull_request === undefined)
+        const filtered = bounded.filter((entry) => (entry as Record<string, unknown>).pull_request === undefined)
         return { source, itemType, items: filtered.map((entry) => parseItem(itemType, entry)) }
       }
       if (spec.name === 'github_search_topics') {
-        return { source, itemType: 'topicHit', items: data.map((entry) => parseItem('topicHit', entry)) }
+        return { source, itemType: 'topicHit', items: bounded.map((entry) => parseItem('topicHit', entry)) }
       }
       if (spec.name === 'github_search_code') {
-        return { source, itemType: 'repoHit', items: data.map((entry) => {
+        return { source, itemType: 'repoHit', items: bounded.map((entry) => {
           const r = entry as Record<string, unknown>
           const repo = r.repository as Record<string, unknown> | null
           return {
@@ -1807,7 +2051,7 @@ export function buildCatalogTool(fetcher: Fetcher, spec: ToolSpec) {
           }
         }) }
       }
-      return { source, itemType, items: data.map((entry) => parseItem(itemType, entry)) }
+      return { source, itemType, items: bounded.map((entry) => parseItem(itemType, entry)) }
     }
     if (spec.kind === 'string-list') {
       return { source, itemType: 'string', items: raw as string[] }
