@@ -727,7 +727,7 @@ const parsers: Record<string, (raw: unknown, name?: unknown) => unknown> = {
     const r = raw as Record<string, unknown>
     const user = r.user as Record<string, unknown> | null
     return {
-      number: n(r.number),
+      ident: s(r.ident) ?? (s(r.html_url)?.split('/').pop() ?? (n(r.number) > 0 ? String(n(r.number)) : '')),
       title: s(r.title) ?? '',
       state: s(r.issue_state) ?? s(r.state) ?? '',
       user: user !== null && typeof user === 'object' ? s(user.login) ?? 'unknown' : 'unknown',
@@ -752,13 +752,14 @@ const parsers: Record<string, (raw: unknown, name?: unknown) => unknown> = {
     const r = raw as Record<string, unknown>
     const owner = r.owner as Record<string, unknown> | null
     const created = n(r.creation_date) > 0 ? new Date(n(r.creation_date) * 1000).toISOString() : null
+    const answerId = n(r.answer_id)
     return {
-      answerId: n(r.answer_id),
+      answerId,
       score: n(r.score),
       accepted: r.is_accepted === true,
       author: owner !== null && typeof owner === 'object' ? s(owner.display_name) ?? 'unknown' : 'unknown',
       createdAt: created !== null ? created.slice(0, 10) : null,
-      link: s(r.link) ?? '',
+      link: s(r.link) ?? (answerId > 0 ? `https://stackoverflow.com/a/${answerId}` : ''),
     }
   },
   soTag(raw) {
@@ -1397,7 +1398,7 @@ const itemSchemas: Record<string, object> = {
     tagName: strSchema(), name: nullableStr(), createdAt: nullableStr(), htmlUrl: strSchema(),
   } },
   giteeIssue: { type: 'object', additionalProperties: false, properties: {
-    number: intSchema(), title: strSchema(), state: strSchema(), user: strSchema(), comments: intSchema(), createdAt: nullableStr(), htmlUrl: strSchema(),
+    ident: strSchema(), title: strSchema(), state: strSchema(), user: strSchema(), comments: intSchema(), createdAt: nullableStr(), htmlUrl: strSchema(),
   } },
   giteeCommit: { type: 'object', additionalProperties: false, properties: {
     sha: strSchema(), message: strSchema(), author: nullableStr(), date: nullableStr(), htmlUrl: strSchema(),
@@ -1608,7 +1609,7 @@ const objectFormatters: Record<string, (item: Record<string, unknown>) => string
   gitlabCommit: (i) => `${i.sha} ${i.title} (${i.author ?? '?'}, ${i.date ?? '?'}) ${i.webUrl ?? ''}`,
   gitlabBranch: (i) => `${i.name}${i.default ? ' [default]' : ''}${i.protected ? ' [protected]' : ''} ${i.webUrl ?? ''}`,
   giteeRelease: (i) => `${i.tagName} (${i.createdAt ?? '?'}) ${i.htmlUrl}`,
-  giteeIssue: (i) => `#${i.number} ${i.title} [${i.state}] (@${i.user}, ${i.comments} comments) ${i.htmlUrl}`,
+  giteeIssue: (i) => `#${i.ident} ${i.title} [${i.state}] (@${i.user}, ${i.comments} comments) ${i.htmlUrl}`,
   giteeCommit: (i) => `${i.sha} ${i.message} (${i.author ?? '?'}, ${i.date ?? '?'}) ${i.htmlUrl}`,
   soAnswer: (i) => `#${i.answerId} ${i.accepted ? '[accepted] ' : ''}(${i.score} votes, @${i.author}, ${i.createdAt ?? '?'}) ${i.link}`,
   soTag: (i) => `${i.name} (${i.count} questions)`,
