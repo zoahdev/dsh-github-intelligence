@@ -46,3 +46,7 @@ dsh web --port 4111
 ```
 
 Result: `dsh web: http://127.0.0.1:4111`; `GET /` returns HTTP 200. No plugin load errors. All seven tools register during `apply()`; a schema/registration failure would abort boot.
+
+## Known verification gap (documented 2026-08-15)
+
+CI proves: bundle loads, tools register through `apply()/ctx.tools.register`, real handlers execute and return asserted results, the bundle installs into a fresh DSH profile, and `dsh web` boots. It does **not** yet prove that the tools are visible inside a live agent session — under the dual-instance shadowing described in discussions #1697/#1782, a plugin can register into a shadowed ToolRuntime that agents never read. The `--profile` check of dsh-plugin-doctor detects that precondition; in-session visibility verification is planned.
