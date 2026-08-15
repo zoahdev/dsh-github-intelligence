@@ -16,9 +16,11 @@ Result: `tsc -p tsconfig.json` exits 0, emits `lib/` with `index.js`, `github.js
 pnpm test
 ```
 
-Result: 3 test files, 35 tests, all passed. Coverage includes extended repo parsing, issue/PR filtering, contributors, commits, TTL caching, rate-limit/404 errors, registration of 170+ tools, the deep report, catalog completeness (unique names, 100+ tool floor), generated-tool execution (GitHub lists, npm search unwrapping, Hacker News item resolution, ecosystem stats, GitLab/Gitee, file content, the v2.3.0 tool set), and input validation.
+Result: 3 test files, 39 tests, all passed. Coverage includes extended repo parsing, issue/PR filtering, contributors, commits, TTL caching, rate-limit/404 errors, registration of 185+ tools, the deep report, catalog completeness (unique names, 100+ tool floor), generated-tool execution (GitHub lists, npm search unwrapping, Hacker News item resolution, ecosystem stats, GitLab/Gitee, file content, the v2.3.0 + v2.4.0 tool sets, local limit enforcement, SO site param), and input validation.
 
 In addition, every v2.3.0 tool passed a real-network smoke against the public GitHub API (scripts/v230-network-smoke.mjs): `github_user_repositories`, `github_user_social_accounts`, `github_repo_releases`, `github_repo_issues`, `github_repo_pulls`, `github_repo_contributors`, `github_repo_subscribers`, `github_repo_collaborators`, `github_repo_git_refs`, `github_repo_punch_card` (168 punches), `github_repo_security_advisories`, and `github_search_repositories`.
+
+The v2.4.0 smoke (scripts/v240-network-smoke.mjs) covers all 27 v2.3.0 + v2.4.0 tools against their real public APIs (GitHub, GitLab, Gitee, npm, Stack Exchange, dev.to; Reddit skipped on networks that block it): 25/25 passed on this machine, including `so_question_answers` (5 real answers), `so_top_tags` (10 real tags), `gitlab_project_*` (5 each), `npm_package_dependencies` (real dependency list), and dev.to article/user. The smoke also verified the `limit` fix: GitHub list tools now return exactly the requested count instead of the API's default page.
 
 ## 3. Package and install into a dsh profile
 
