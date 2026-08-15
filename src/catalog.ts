@@ -97,6 +97,51 @@ const parsers: Record<string, (raw: unknown, name?: unknown) => unknown> = {
       htmlUrl: s(r.html_url) ?? '',
     }
   },
+  collaborator(raw) {
+    const r = raw as Record<string, unknown>
+    const permissions = r.permissions as Record<string, unknown> | null
+    const permission = permissions !== null && typeof permissions === 'object'
+      ? ['admin', 'maintain', 'push', 'triage', 'pull'].find((key) => permissions[key] === true)
+      : undefined
+    return {
+      login: s(r.login) ?? 'unknown',
+      avatarUrl: s(r.avatar_url),
+      htmlUrl: s(r.html_url) ?? '',
+      permission: permission ?? 'none',
+    }
+  },
+  gitRef(raw) {
+    const r = raw as Record<string, unknown>
+    const object = r.object as Record<string, unknown> | null
+    return {
+      ref: s(r.ref) ?? '',
+      type: object !== null && typeof object === 'object' ? s(object.type) ?? '' : '',
+      sha: object !== null && typeof object === 'object' ? s(object.sha) ?? '' : '',
+      htmlUrl: s(r.html_url),
+    }
+  },
+  punchCard(raw) {
+    const entry = Array.isArray(raw) ? raw : []
+    return { day: n(entry[0]), hour: n(entry[1]), count: n(entry[2]) }
+  },
+  advisory(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      ghsaId: s(r.ghsa_id) ?? '',
+      summary: s(r.summary) ?? '',
+      severity: s(r.severity) ?? 'unknown',
+      publishedAt: d(r.published_at),
+      updatedAt: d(r.updated_at),
+      htmlUrl: s(r.html_url) ?? '',
+    }
+  },
+  socialAccount(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      provider: s(r.provider) ?? '',
+      url: s(r.url) ?? '',
+    }
+  },
   user(raw) {
     const r = raw as Record<string, unknown>
     return {
@@ -1021,6 +1066,21 @@ const itemSchemas: Record<string, object> = {
   contributor: { type: 'object', additionalProperties: false, properties: {
     login: strSchema(), contributions: intSchema(), avatarUrl: nullableStr(),
   } },
+  collaborator: { type: 'object', additionalProperties: false, properties: {
+    login: strSchema(), avatarUrl: nullableStr(), htmlUrl: strSchema(), permission: strSchema(),
+  } },
+  gitRef: { type: 'object', additionalProperties: false, properties: {
+    ref: strSchema(), type: strSchema(), sha: strSchema(), htmlUrl: nullableStr(),
+  } },
+  punchCard: { type: 'object', additionalProperties: false, properties: {
+    day: intSchema(), hour: intSchema(), count: intSchema(),
+  } },
+  advisory: { type: 'object', additionalProperties: false, properties: {
+    ghsaId: strSchema(), summary: strSchema(), severity: strSchema(), publishedAt: nullableStr(), updatedAt: nullableStr(), htmlUrl: strSchema(),
+  } },
+  socialAccount: { type: 'object', additionalProperties: false, properties: {
+    provider: strSchema(), url: strSchema(),
+  } },
   comment: { type: 'object', additionalProperties: false, properties: {
     id: intSchema(), user: strSchema(), body: strSchema(), createdAt: nullableStr(), htmlUrl: strSchema(),
   } },
@@ -1252,6 +1312,11 @@ const formatters: Record<string, (item: Record<string, unknown>) => string> = {
   label: (i) => `${i.name} (#${i.color}${i.default ? ', default' : ''})${i.description ? ` — ${i.description}` : ''}`,
   milestone: (i) => `#${i.number} ${i.title} [${i.state}] ${i.openIssues} open / ${i.closedIssues} closed (${i.dueOn ?? 'no due date'}) ${i.htmlUrl}`,
   contributor: (i) => `${i.login} — ${i.contributions} contributions`,
+  collaborator: (i) => `${i.login} [${i.permission}] ${i.htmlUrl}`,
+  gitRef: (i) => `${i.ref} (${i.type} ${i.sha})`,
+  punchCard: (i) => `day ${i.day} hour ${i.hour}: ${i.count} commits`,
+  advisory: (i) => `${i.ghsaId} [${i.severity}] ${i.summary} (${i.publishedAt ?? '?'}) ${i.htmlUrl}`,
+  socialAccount: (i) => `${i.provider}: ${i.url}`,
   comment: (i) => `#${i.id} @${i.user} (${i.createdAt ?? '?'}): ${String(i.body).slice(0, 120)} ${i.htmlUrl}`,
   review: (i) => `#${i.id} @${i.user} [${i.state}] (${i.submittedAt ?? '?'}) ${i.htmlUrl}`,
   fileChange: (i) => `${i.filename} [${i.status}] +${i.additions}/-${i.deletions} (${i.changes} changes)`,
@@ -1368,8 +1433,10 @@ export const catalog: ToolSpec[] = [
   L({ name: 'github_repo_release_by_id', description: 'A release by numeric id.', kind: 'object', itemType: 'release', path: '/repos/{owner}/{repo}/releases/{releaseId}' }),
   L({ name: 'github_repo_release_assets', description: 'Binary assets attached to a release.', kind: 'list', itemType: 'releaseAsset', path: '/repos/{owner}/{repo}/releases/{releaseId}/assets' }),
   L({ name: 'github_repo_releases_latest', description: 'The latest non-prerelease release.', kind: 'object', itemType: 'release', path: '/repos/{owner}/{repo}/releases/latest' }),
+  L({ name: 'github_repo_releases', description: 'Recent releases of a repository, newest first (including prereleases).', kind: 'list', itemType: 'release', path: '/repos/{owner}/{repo}/releases', params: { limit: { type: 'number', description: 'How many releases (1-50).' } } }),
   // issues
   L({ name: 'github_repo_issue', description: 'A single issue by number.', kind: 'object', itemType: 'issue', path: '/repos/{owner}/{repo}/issues/{number}' }),
+  L({ name: 'github_repo_issues', description: 'Issues of a repository (GitHub also returns pull requests in this list).', kind: 'list', itemType: 'issue', path: '/repos/{owner}/{repo}/issues', params: { state: { type: 'string', enum: ['open', 'closed', 'all'], description: 'Issue state.' }, limit: { type: 'number', description: 'How many issues (1-50).' } } }),
   L({ name: 'github_repo_issue_comments', description: 'Comments on a single issue.', kind: 'list', itemType: 'comment', path: '/repos/{owner}/{repo}/issues/{number}/comments', params: { limit: { type: 'number', description: 'How many comments (1-50).' } } }),
   L({ name: 'github_repo_issue_events', description: 'Timeline events of a single issue (labeled, closed, referenced...).', kind: 'list', itemType: 'event', path: '/repos/{owner}/{repo}/issues/{number}/events', params: { limit: { type: 'number', description: 'How many events (1-50).' } } }),
   L({ name: 'github_repo_labels', description: 'Labels of a repository.', kind: 'list', itemType: 'label', path: '/repos/{owner}/{repo}/labels', params: { limit: { type: 'number', description: 'How many labels (1-50).' } } }),
@@ -1378,6 +1445,7 @@ export const catalog: ToolSpec[] = [
   L({ name: 'github_repo_milestone', description: 'A single milestone by number.', kind: 'object', itemType: 'milestone', path: '/repos/{owner}/{repo}/milestones/{number}' }),
   // pulls
   L({ name: 'github_repo_pull', description: 'A single pull request by number.', kind: 'object', itemType: 'pull', path: '/repos/{owner}/{repo}/pulls/{number}' }),
+  L({ name: 'github_repo_pulls', description: 'Pull requests of a repository.', kind: 'list', itemType: 'pull', path: '/repos/{owner}/{repo}/pulls', params: { state: { type: 'string', enum: ['open', 'closed', 'all'], description: 'Pull request state.' }, limit: { type: 'number', description: 'How many pull requests (1-50).' } } }),
   L({ name: 'github_repo_pull_commits', description: 'Commits on a pull request.', kind: 'list', itemType: 'commit', path: '/repos/{owner}/{repo}/pulls/{number}/commits', params: { limit: { type: 'number', description: 'How many commits (1-50).' } } }),
   L({ name: 'github_repo_pull_files', description: 'Files changed in a pull request.', kind: 'list', itemType: 'fileChange', path: '/repos/{owner}/{repo}/pulls/{number}/files', params: { limit: { type: 'number', description: 'How many files (1-50).' } } }),
   L({ name: 'github_repo_pull_reviews', description: 'Reviews submitted on a pull request.', kind: 'list', itemType: 'review', path: '/repos/{owner}/{repo}/pulls/{number}/reviews', params: { limit: { type: 'number', description: 'How many reviews (1-50).' } } }),
@@ -1414,9 +1482,12 @@ export const catalog: ToolSpec[] = [
   L({ name: 'github_search_topics', description: 'Search GitHub topics.', kind: 'list', itemType: 'topicHit', path: '/search/topics', params: { q: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', description: 'How many results (1-50).' } } }),
   L({ name: 'github_search_labels', description: 'Search repository labels.', kind: 'list', itemType: 'label', path: '/search/labels', params: { repository_id: { type: 'number', required: true, description: 'Numeric repository id.' }, q: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', description: 'How many results (1-50).' } } }),
   L({ name: 'github_search_code', description: 'Search code across GitHub (requires a configured githubToken).', kind: 'list', itemType: 'repoHit', path: '/search/code', params: { q: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', description: 'How many results (1-50).' } }, authNote: 'Code search requires authentication; configure githubToken.' }),
+  L({ name: 'github_search_repositories', description: 'Search public repositories across GitHub with search syntax.', kind: 'list', itemType: 'repoHit', path: '/search/repositories', wrap: 'items', params: { q: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', description: 'How many results (1-50).' } } }),
   // users
   L({ name: 'github_user', description: 'Public profile of a GitHub user.', kind: 'object', itemType: 'user', path: '/users/{username}' }),
   L({ name: 'github_user_starred', description: 'Repositories a user has starred.', kind: 'list', itemType: 'repoHit', path: '/users/{username}/starred', params: { limit: { type: 'number', description: 'How many repositories (1-50).' } } }),
+  L({ name: 'github_user_repos', description: 'Repositories owned by a user.', kind: 'list', itemType: 'repoHit', path: '/users/{username}/repos', params: { limit: { type: 'number', description: 'How many repositories (1-50).' } } }),
+  L({ name: 'github_user_social_accounts', description: 'Public social accounts linked to a user.', kind: 'list', itemType: 'socialAccount', path: '/users/{username}/social_accounts', params: { limit: { type: 'number', description: 'How many accounts (1-50).' } } }),
   L({ name: 'github_user_followers', description: 'Followers of a user.', kind: 'list', itemType: 'user', path: '/users/{username}/followers', params: { limit: { type: 'number', description: 'How many followers (1-50).' } } }),
   L({ name: 'github_user_following', description: 'Users a user follows.', kind: 'list', itemType: 'user', path: '/users/{username}/following', params: { limit: { type: 'number', description: 'How many users (1-50).' } } }),
   L({ name: 'github_user_gists', description: 'Public gists of a user.', kind: 'list', itemType: 'gist', path: '/users/{username}/gists', params: { limit: { type: 'number', description: 'How many gists (1-50).' } } }),
@@ -1507,6 +1578,12 @@ export const catalog: ToolSpec[] = [
   L({ name: 'github_repo_deployment_status', description: 'A single deployment status by id.', kind: 'object', itemType: 'deploymentStatus', path: '/repos/{owner}/{repo}/deployments/{deploymentId}/statuses/{statusId}' }),
   L({ name: 'github_repo_pages_builds', description: 'GitHub Pages build history of a repository.', kind: 'list', itemType: 'pagesBuild', path: '/repos/{owner}/{repo}/pages/builds', params: { limit: { type: 'number', default: 5, description: 'How many builds (1-50).' } } }),
   L({ name: 'github_repo_contributors_stats', description: 'Commit totals per contributor over the repository lifetime.', kind: 'list', itemType: 'contributorStats', path: '/repos/{owner}/{repo}/stats/contributors', params: { limit: { type: 'number', default: 10, description: 'How many contributors (1-50).' } } }),
+  L({ name: 'github_repo_contributors', description: 'Contributors of a repository by commit count.', kind: 'list', itemType: 'contributor', path: '/repos/{owner}/{repo}/contributors', params: { limit: { type: 'number', description: 'How many contributors (1-50).' } } }),
+  L({ name: 'github_repo_subscribers', description: 'Users watching a repository.', kind: 'list', itemType: 'user', path: '/repos/{owner}/{repo}/subscribers', params: { limit: { type: 'number', description: 'How many subscribers (1-50).' } } }),
+  L({ name: 'github_repo_collaborators', description: 'Collaborators of a repository with their effective permission.', kind: 'list', itemType: 'collaborator', path: '/repos/{owner}/{repo}/collaborators', params: { limit: { type: 'number', description: 'How many collaborators (1-50).' } }, authNote: 'Requires a token with push access to the repository.' }),
+  L({ name: 'github_repo_git_refs', description: 'Git refs of a repository matching a prefix (e.g. heads, tags).', kind: 'list', itemType: 'gitRef', path: '/repos/{owner}/{repo}/git/matching-refs/{ref}', params: { limit: { type: 'number', description: 'How many refs (1-50).' } }, example: 'ref=heads/main' }),
+  L({ name: 'github_repo_punch_card', description: 'Commit counts by day of week and hour (punch card).', kind: 'list', itemType: 'punchCard', path: '/repos/{owner}/{repo}/stats/punch_card' }),
+  L({ name: 'github_repo_security_advisories', description: 'Security advisories of a repository (GHSA).', kind: 'list', itemType: 'advisory', path: '/repos/{owner}/{repo}/security-advisories', params: { limit: { type: 'number', description: 'How many advisories (1-50).' } } }),
   L({ name: 'github_repo_issue_timeline', description: 'Timeline events of a single issue.', kind: 'list', itemType: 'event', path: '/repos/{owner}/{repo}/issues/{number}/timeline', params: { limit: { type: 'number', default: 5, description: 'How many events (1-50).' } } }),
   L({ name: 'github_repo_contents_path', description: 'File and directory listing at a path in a repository.', kind: 'list', itemType: 'contentsItem', path: '/repos/{owner}/{repo}/contents/{path}' }),
   L({ name: 'github_repo_file_content', description: 'A single file from a repository, decoded to plain text (bounded).', kind: 'object', itemType: 'fileContent', path: '/repos/{owner}/{repo}/contents/{path}' }),
@@ -1707,6 +1784,10 @@ export function buildCatalogTool(fetcher: Fetcher, spec: ToolSpec) {
       }
       if (spec.name === 'github_search_pulls') {
         const filtered = data.filter((entry) => (entry as Record<string, unknown>).pull_request !== undefined)
+        return { source, itemType, items: filtered.map((entry) => parseItem(itemType, entry)) }
+      }
+      if (spec.name === 'github_repo_issues') {
+        const filtered = data.filter((entry) => (entry as Record<string, unknown>).pull_request === undefined)
         return { source, itemType, items: filtered.map((entry) => parseItem(itemType, entry)) }
       }
       if (spec.name === 'github_search_topics') {
