@@ -145,6 +145,17 @@ export class GitHubClient {
     return value
   }
 
+  /**
+   * Raw cached request used by generated catalog tools.
+   * @param path - API path (starting with /).
+   * @param signal - caller cancellation signal.
+   * @param cacheKey - optional cache key; defaults to the path.
+   */
+  raw<T>(path: string, signal: AbortSignal, cacheKey?: string): Promise<T> {
+    const key = cacheKey ?? path
+    return this.cached(key, () => this.request<T>(path, signal))
+  }
+
   private async request<T>(path: string, signal: AbortSignal): Promise<T> {
     const headers: Record<string, string> = {
       accept: 'application/vnd.github+json',
@@ -210,6 +221,25 @@ export class GitHubClient {
       const items = Array.isArray(data.items) ? data.items : []
       return items.map((entry) => this.parseRepoHit(entry))
     })
+  }
+
+  /** List a user's own repositories sorted by stars (forks excluded by default). */
+  listUserRepos(username: string, limit: number, signal: AbortSignal): Promise<GitHubRepoHit[]> {
+    const perPage = Math.min(Math.max(Math.trunc(limit), 1), 50)
+    const path = `/users/${encodeURIComponent(username)}/repos?type=owner&sort=stars&order=desc&per_page=${perPage}`
+    return this.cached(`user-repos:${path}`, async () => {
+      const data = await this.request<unknown[]>(path, signal)
+      return data.map((entry) => this.parseRepoHit(entry))
+    })
+  }
+
+  /** Approximate "trending": repositories created recently, sorted by stars. */
+  trending(limit: number, language: string | undefined, sinceDays: number, signal: AbortSignal): Promise<GitHubRepoHit[]> {
+    const perPage = Math.min(Math.max(Math.trunc(limit), 1), 50)
+    const since = new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10)
+    let query = `created:>${since}`
+    if (language !== undefined && language.trim() !== '') query += ` language:${language.trim()}`
+    return this.searchRepos(query, perPage, 'stars', signal)
   }
 
   listIssues(owner: string, repo: string, state: IssueState, limit: number, signal: AbortSignal): Promise<GitHubIssue[]> {
