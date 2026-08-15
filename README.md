@@ -2,7 +2,7 @@
 
 [English](#english) · [中文](#中文)
 
-**The most complete GitHub integration for DeepSeek Harness.** Seven model-facing tools over the public GitHub REST API — no API key required — plus a one-shot deep repo report, rate-limit-friendly TTL caching, cancellation, and UI cards.
+**The most comprehensive developer-intelligence integration for DeepSeek Harness: 140+ read-only tools across 9 ecosystems** — GitHub, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, and Reddit. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
 
 > Topic: [`dsh-plugin`](https://github.com/topics/dsh-plugin) · Tested with `dsh` 0.1.0-rc.6 · Node 24 / pnpm 11
 
@@ -17,6 +17,12 @@
 | `github_contributors` | Top contributors by commit count |
 | `github_search` | Repository search sorted by stars or last update |
 | `github_repo_report` | One-shot deep report: overview + latest release + open issues + recent commits + top contributors |
+| `github_compare` | Side-by-side comparison of two repositories with numeric deltas |
+| `github_trending` | Recently created repositories sorted by stars (optional language filter) |
+| `github_user_repos` | A user's top repositories by stars |
+| `github_help` | Catalog of all 140+ tools — call it when unsure which tool to use |
+
+Beyond GitHub, the catalog also covers **npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit**, and the **dsh plugin ecosystem itself** (registry stats) — one install, one consistent tool style, one cache.
 
 Example prompts:
 
@@ -50,11 +56,13 @@ All values are optional and set in `cordis.yml`:
 
 ## Why "most complete"
 
-- **Breadth**: covers the five surfaces developers actually ask about (repo, releases, issues, PRs, contributors) plus search — not just one endpoint.
-- **Depth**: `github_repo_report` composes all of them into one canonical answer with a single agent turn.
+- **Breadth**: 140+ tools across 9 developer ecosystems — not just one endpoint.
+- **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_help` makes the catalog self-discoverable.
 - **Rate-limit friendly**: every endpoint is wrapped in a short TTL cache; the deep report reuses cached sub-calls (4 HTTP requests, not 4+ per repetition).
 - **Correctness**: issues are filtered to exclude pull requests; every request honors `exec.signal`; anonymous rate limits and 429s produce actionable errors.
-- **Verified**: 16 tests, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
+- **Verified**: 27 tests, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
+
+> ⭐ If this helps your agent, a star helps the ecosystem find it. Feedback and issues are equally welcome.
 
 ## Development
 
@@ -99,7 +107,7 @@ MIT © 2026 zoahdev
 
 ## 中文
 
-**dsh-github-intelligence —— DeepSeek Harness 上最完整的 GitHub 整合。** 7 个模型可直接调用的工具，覆盖仓库、Release、Issue、PR、贡献者、搜索，外加一键"深度报告"；无需 API Key，内置 60 秒缓存帮你在匿名限流下省着用。
+**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：140+ 只读工具，横跨 9 大生态**（GitHub、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
 
 > 话题：[`dsh-plugin`](https://github.com/topics/dsh-plugin) · 已在 `dsh` 0.1.0-rc.6 / Node 24 / pnpm 11 实测
 
@@ -114,6 +122,12 @@ MIT © 2026 zoahdev
 | `github_contributors` | 按提交数排名的贡献者 |
 | `github_search` | 按星标/更新时间搜索仓库 |
 | `github_repo_report` | 深度报告：概览 + 最新 Release + open issues + 最近提交 + 头部贡献者 |
+| `github_compare` | 两个仓库并排对比（含数值差量） |
+| `github_trending` | 近期新建仓库按星标排序（可按语言过滤） |
+| `github_user_repos` | 某用户星标最高的仓库 |
+| `github_help` | 全部 140+ 工具目录，不确定时先问它 |
+
+GitHub 之外，目录还覆盖 **npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit** 以及 **dsh 插件生态自身**（注册表统计）——一次安装，统一风格，统一缓存。
 
 示例提问：
 
@@ -131,11 +145,13 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 
 ## 为什么说"最完整"
 
-- **覆盖面**：开发者会问的五类数据全都有（仓库/Release/Issue/PR/贡献者）+ 搜索，不是单点工具；
-- **深度**：`github_repo_report` 一次回答"这个仓库到底怎么样"；
+- **覆盖面**：140+ 工具、9 大开发者生态，不是单点工具；
+- **深度**：`github_repo_report` 一次回答"这个仓库到底怎么样"；`github_help` 让目录自发现；
 - **省配额**：所有接口带短 TTL 缓存，深度报告复用缓存子调用，一次只发 4 个请求；
 - **正确性**：Issue 自动排除 PR、全部请求支持取消、匿名限流/429 有明确提示；
-- **验证**：16 个测试 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
+- **验证**：27 个测试 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
+
+> ⭐ 如果它帮到了你的 agent，一个 star 就能让整个生态更容易发现它。反馈和 issue 同样欢迎。
 
 ## 开发
 
