@@ -123,7 +123,7 @@ describe('generated tools', () => {
   it('ships the v2.3.0 tool set (releases/issues/pulls lists, users, orgs, refs, punch card, advisories, search)', () => {
     for (const name of [
       'github_repo_releases', 'github_repo_issues', 'github_repo_pulls',
-      'github_user_repos', 'github_user_social_accounts', 'github_repo_contributors',
+      'github_user_repositories', 'github_user_social_accounts', 'github_repo_contributors',
       'github_repo_subscribers', 'github_repo_collaborators', 'github_repo_git_refs',
       'github_repo_punch_card', 'github_repo_security_advisories', 'github_search_repositories',
     ]) {
@@ -213,7 +213,7 @@ describe('generated tools', () => {
         expected: { items: [{ login: 'w', type: 'User' }] },
       },
       {
-        name: 'github_user_repos', args: { username: 'z' },
+        name: 'github_user_repositories', args: { username: 'z' },
         fixture: [{ full_name: 'z/r', description: 'd', stargazers_count: 1, language: 'TS', updated_at: null, html_url: 'https://x/r' }],
         expected: { source: '@z', items: [{ fullName: 'z/r', stars: 1 }] },
       },
