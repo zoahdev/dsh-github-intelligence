@@ -6,7 +6,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**The most comprehensive developer-intelligence integration for DeepSeek Harness: 150+ read-only tools across 11 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, and Reddit. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
+**The most comprehensive developer-intelligence integration for DeepSeek Harness: 160+ read-only tools across 11 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, and Reddit. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
 
 > Topic: [`dsh-plugin`](https://github.com/topics/dsh-plugin) · Tested with `dsh` 0.1.0-rc.6 · Node 24 / pnpm 11
 
@@ -60,7 +60,7 @@ All values are optional and set in `cordis.yml`:
 
 ## Why "most complete"
 
-- **Breadth**: 150+ tools across 11 external developer ecosystems plus the dsh registry — not just one endpoint.
+- **Breadth**: 160+ tools across 11 external developer ecosystems plus the dsh registry — not just one endpoint.
 - **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_help` makes the catalog self-discoverable.
 - **Rate-limit friendly**: every endpoint is wrapped in a short TTL cache; the deep report reuses cached sub-calls (4 HTTP requests, not 4+ per repetition).
 - **Correctness**: issues are filtered to exclude pull requests; every request honors `exec.signal`; anonymous rate limits and 429s produce actionable errors.
@@ -115,7 +115,7 @@ MIT © 2026 zoahdev
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：150+ 只读工具，横跨 11 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
+**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：160+ 只读工具，横跨 11 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
 
 > 话题：[`dsh-plugin`](https://github.com/topics/dsh-plugin) · 已在 `dsh` 0.1.0-rc.6 / Node 24 / pnpm 11 实测
 
@@ -153,7 +153,7 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 
 ## 为什么说"最完整"
 
-- **覆盖面**：150+ 工具、11 大外部生态 + dsh 注册表，不是单点工具；
+- **覆盖面**：160+ 工具、11 大外部生态 + dsh 注册表，不是单点工具；
 - **深度**：`github_repo_report` 一次回答"这个仓库到底怎么样"；`github_help` 让目录自发现；
 - **省配额**：所有接口带短 TTL 缓存，深度报告复用缓存子调用，一次只发 4 个请求；
 - **正确性**：Issue 自动排除 PR、全部请求支持取消、匿名限流/429 有明确提示；
