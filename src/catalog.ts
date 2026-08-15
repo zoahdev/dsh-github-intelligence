@@ -58,6 +58,7 @@ function unwrap(raw: unknown, wrap?: string): unknown {
     case 'versions': return r.versions
     case 'data': return r.data
     case 'releases': return r.releases
+    case 'users': return r.users
     default: return raw
   }
 }
@@ -612,6 +613,54 @@ const parsers: Record<string, (raw: unknown, name?: unknown) => unknown> = {
       htmlUrl: s(r.html_url) ?? '',
     }
   },
+  deploymentStatus(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      id: n(r.id),
+      state: s(r.state) ?? '',
+      environment: s(r.environment),
+      description: s(r.description),
+      createdAt: d(r.created_at),
+      htmlUrl: s(r.html_url) ?? '',
+    }
+  },
+  pagesBuild(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      id: n(r.id),
+      status: s(r.status) ?? '',
+      error: s((r.error as Record<string, unknown> | null)?.message),
+      createdAt: d(r.created_at),
+      htmlUrl: s(r.html_url) ?? '',
+    }
+  },
+  contributorStats(raw) {
+    const r = raw as Record<string, unknown>
+    const author = r.author as Record<string, unknown> | null
+    return {
+      author: author !== null && typeof author === 'object' ? s(author.login) ?? 'unknown' : 'unknown',
+      total: n(r.total),
+    }
+  },
+  fileContent(raw) {
+    const r = raw as Record<string, unknown>
+    let contentText = ''
+    const content = s(r.content)
+    if (content !== null) {
+      try {
+        contentText = Buffer.from(content, 'base64').toString('utf8').slice(0, 8_000)
+      } catch {
+        contentText = ''
+      }
+    }
+    return {
+      name: s(r.name) ?? '',
+      path: s(r.path) ?? '',
+      size: n(r.size),
+      htmlUrl: s(r.html_url) ?? '',
+      contentText,
+    }
+  },
 }
 
 function parseItem(type: string, raw: unknown, key?: string): unknown {
@@ -884,6 +933,26 @@ const objectParsers: Record<string, (raw: unknown) => unknown> = {
       updatedAt: d(r.updated_at),
     }
   },
+  soUser(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      userId: n(r.user_id),
+      displayName: s(r.display_name) ?? '',
+      reputation: n(r.reputation),
+      location: s(r.location),
+      link: s(r.link) ?? '',
+      createdAt: d(r.creation_date) !== null ? new Date(n(r.creation_date) * 1000).toISOString().slice(0, 10) : null,
+    }
+  },
+  redditUser(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      name: s(r.name) ?? '',
+      linkKarma: n(r.link_karma),
+      commentKarma: n(r.comment_karma),
+      created: s(r.created_utc) !== null ? new Date(n(r.created_utc) * 1000).toISOString().slice(0, 10) : null,
+    }
+  },
 }
 
 function parseObject(type: string, raw: unknown): unknown {
@@ -1069,6 +1138,18 @@ const itemSchemas: Record<string, object> = {
   giteeRepo: { type: 'object', additionalProperties: false, properties: {
     fullName: strSchema(), description: nullableStr(), stars: intSchema(), forks: intSchema(), language: nullableStr(), htmlUrl: strSchema(),
   } },
+  deploymentStatus: { type: 'object', additionalProperties: false, properties: {
+    id: intSchema(), state: strSchema(), environment: nullableStr(), description: nullableStr(), createdAt: nullableStr(), htmlUrl: strSchema(),
+  } },
+  pagesBuild: { type: 'object', additionalProperties: false, properties: {
+    id: intSchema(), status: strSchema(), error: nullableStr(), createdAt: nullableStr(), htmlUrl: strSchema(),
+  } },
+  contributorStats: { type: 'object', additionalProperties: false, properties: {
+    author: strSchema(), total: intSchema(),
+  } },
+  fileContent: { type: 'object', additionalProperties: false, properties: {
+    name: strSchema(), path: strSchema(), size: intSchema(), htmlUrl: strSchema(), contentText: strSchema(),
+  } },
 }
 
 const objectSchemas: Record<string, object> = {
@@ -1145,6 +1226,12 @@ const objectSchemas: Record<string, object> = {
   giteeRepoDetail: { type: 'object', additionalProperties: false, properties: {
     fullName: strSchema(), description: nullableStr(), stars: intSchema(), forks: intSchema(), language: nullableStr(), license: nullableStr(), htmlUrl: strSchema(), updatedAt: nullableStr(),
   } },
+  soUser: { type: 'object', additionalProperties: false, properties: {
+    userId: intSchema(), displayName: strSchema(), reputation: intSchema(), location: nullableStr(), link: strSchema(), createdAt: nullableStr(),
+  } },
+  redditUser: { type: 'object', additionalProperties: false, properties: {
+    name: strSchema(), linkKarma: intSchema(), commentKarma: intSchema(), created: nullableStr(),
+  } },
 }
 
 /* ------------------------------------------------------------------ */
@@ -1204,6 +1291,10 @@ const formatters: Record<string, (item: Record<string, unknown>) => string> = {
   redditPost: (i) => `r/${i.subreddit}: ${i.title} (${i.score} pts, ${i.numComments} comments, u/${i.author}) ${i.permalink || i.url}`,
   gitlabProject: (i) => `${i.nameWithNamespace || i.name} (★${i.stars}, ${i.forks} forks) — ${i.description ?? ''} ${i.webUrl}`,
   giteeRepo: (i) => `${i.fullName} (★${i.stars}, ${i.forks} forks, ${i.language ?? 'n/a'}) — ${i.description ?? ''} ${i.htmlUrl}`,
+  deploymentStatus: (i) => `#${i.id} [${i.state}] ${i.environment ?? ''} (${i.createdAt ?? '?'}) ${i.description ?? ''} ${i.htmlUrl}`,
+  pagesBuild: (i) => `#${i.id} [${i.status}]${i.error ? ` error: ${i.error}` : ''} ${i.createdAt ?? '?'} ${i.htmlUrl}`,
+  contributorStats: (i) => `${i.author} — ${i.total} commits`,
+  fileContent: (i) => `${i.path} (${i.size} bytes) ${i.htmlUrl}\n${String(i.contentText).slice(0, 600)}`,
 }
 
 function formatItem(type: string, item: unknown): string {
@@ -1237,6 +1328,8 @@ const objectFormatters: Record<string, (item: Record<string, unknown>) => string
   npmDownloads: (i) => `${i.package}: ${i.downloads} downloads (${i.start} → ${i.end})`,
   gitlabProjectDetail: (i) => `${i.name} (★${i.stars}, ${i.forks} forks, ${i.visibility ?? '?'}) — ${i.description ?? ''}\n${i.webUrl}`,
   giteeRepoDetail: (i) => `${i.fullName} (★${i.stars}, ${i.forks} forks, ${i.language ?? 'n/a'}, ${i.license ?? 'n/a'}) — ${i.description ?? ''}\n${i.htmlUrl}`,
+  soUser: (i) => `${i.displayName} (reputation ${i.reputation}${i.location ? `, ${i.location}` : ''}) ${i.link}`,
+  redditUser: (i) => `u/${i.name} (${i.linkKarma} link karma, ${i.commentKarma} comment karma, since ${i.created ?? '?'})`,
 }
 
 function formatObject(type: string, item: unknown): string {
@@ -1405,6 +1498,29 @@ export const catalog: ToolSpec[] = [
   L({ name: 'gitee_search', description: 'Search repositories on Gitee (Chinese developer platform).', kind: 'list', itemType: 'giteeRepo', baseUrl: 'https://gitee.com/api/v5', path: '/search/repositories', params: { q: { type: 'string', required: true, description: 'Search query.' }, per_page: { type: 'number', default: 5, description: 'How many repositories (1-50).' } } }),
   L({ name: 'gitee_repo', description: 'Details of a Gitee repository.', kind: 'object', itemType: 'giteeRepoDetail', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}' }),
   L({ name: 'gitee_user_repos', description: 'Repositories of a Gitee user.', kind: 'list', itemType: 'giteeRepo', baseUrl: 'https://gitee.com/api/v5', path: '/users/{username}/repos', params: { per_page: { type: 'number', default: 5, description: 'How many repositories (1-50).' } } }),
+  // GitHub: comments, deployments, pages, stats, content
+  L({ name: 'github_repo_commit_comment', description: 'A single commit comment by id.', kind: 'object', itemType: 'comment', path: '/repos/{owner}/{repo}/comments/{commentId}' }),
+  L({ name: 'github_repo_issue_comment', description: 'A single issue comment by id.', kind: 'object', itemType: 'comment', path: '/repos/{owner}/{repo}/issues/comments/{commentId}' }),
+  L({ name: 'github_repo_pull_review', description: 'A single pull request review by id.', kind: 'object', itemType: 'review', path: '/repos/{owner}/{repo}/pulls/{number}/reviews/{reviewId}' }),
+  L({ name: 'github_repo_release_asset', description: 'A single release asset by id.', kind: 'object', itemType: 'releaseAsset', path: '/repos/{owner}/{repo}/releases/assets/{assetId}' }),
+  L({ name: 'github_repo_deployment_statuses', description: 'Statuses of a deployment.', kind: 'list', itemType: 'deploymentStatus', path: '/repos/{owner}/{repo}/deployments/{deploymentId}/statuses', params: { limit: { type: 'number', default: 5, description: 'How many statuses (1-50).' } } }),
+  L({ name: 'github_repo_deployment_status', description: 'A single deployment status by id.', kind: 'object', itemType: 'deploymentStatus', path: '/repos/{owner}/{repo}/deployments/{deploymentId}/statuses/{statusId}' }),
+  L({ name: 'github_repo_pages_builds', description: 'GitHub Pages build history of a repository.', kind: 'list', itemType: 'pagesBuild', path: '/repos/{owner}/{repo}/pages/builds', params: { limit: { type: 'number', default: 5, description: 'How many builds (1-50).' } } }),
+  L({ name: 'github_repo_contributors_stats', description: 'Commit totals per contributor over the repository lifetime.', kind: 'list', itemType: 'contributorStats', path: '/repos/{owner}/{repo}/stats/contributors', params: { limit: { type: 'number', default: 10, description: 'How many contributors (1-50).' } } }),
+  L({ name: 'github_repo_issue_timeline', description: 'Timeline events of a single issue.', kind: 'list', itemType: 'event', path: '/repos/{owner}/{repo}/issues/{number}/timeline', params: { limit: { type: 'number', default: 5, description: 'How many events (1-50).' } } }),
+  L({ name: 'github_repo_contents_path', description: 'File and directory listing at a path in a repository.', kind: 'list', itemType: 'contentsItem', path: '/repos/{owner}/{repo}/contents/{path}' }),
+  L({ name: 'github_repo_file_content', description: 'A single file from a repository, decoded to plain text (bounded).', kind: 'object', itemType: 'fileContent', path: '/repos/{owner}/{repo}/contents/{path}' }),
+  L({ name: 'github_repo_commits_by_author', description: 'Commits of a repository by author login.', kind: 'list', itemType: 'commit', path: '/repos/{owner}/{repo}/commits', params: { author: { type: 'string', required: true, description: 'GitHub login of the author.' }, limit: { type: 'number', default: 5, description: 'How many commits (1-50).' } } }),
+  L({ name: 'github_repo_commits_by_path', description: 'Commits of a repository touching a file path.', kind: 'list', itemType: 'commit', path: '/repos/{owner}/{repo}/commits', params: { path: { type: 'string', required: true, description: 'File path in the repository.' }, limit: { type: 'number', default: 5, description: 'How many commits (1-50).' } } }),
+  L({ name: 'github_repo_commit_comments_by_ref', description: 'Comments on commits at a ref.', kind: 'list', itemType: 'comment', path: '/repos/{owner}/{repo}/commits/{ref}/comments', params: { limit: { type: 'number', default: 5, description: 'How many comments (1-50).' } } }),
+  // Hacker News extras
+  L({ name: 'hn_show', description: 'Latest Show HN posts.', kind: 'list', itemType: 'hnItem', baseUrl: 'https://hacker-news.firebaseio.com/v0', path: '/showstories.json', params: { limit: { type: 'number', default: 5, description: 'How many stories (1-20).' } } }),
+  L({ name: 'hn_job', description: 'Latest job posts on Hacker News.', kind: 'list', itemType: 'hnItem', baseUrl: 'https://hacker-news.firebaseio.com/v0', path: '/jobstories.json', params: { limit: { type: 'number', default: 5, description: 'How many jobs (1-20).' } } }),
+  L({ name: 'hn_best', description: 'Highest-scoring stories on Hacker News right now.', kind: 'list', itemType: 'hnItem', baseUrl: 'https://hacker-news.firebaseio.com/v0', path: '/beststories.json', params: { limit: { type: 'number', default: 5, description: 'How many stories (1-20).' } } }),
+  // Stack Overflow / Reddit / crates extras
+  L({ name: 'so_user', description: 'A Stack Overflow user profile by id.', kind: 'object', itemType: 'soUser', baseUrl: 'https://api.stackexchange.com/2.3', path: '/users/{userId}', wrap: 'items' }),
+  L({ name: 'reddit_user', description: 'A Reddit user profile by username.', kind: 'object', itemType: 'redditUser', baseUrl: 'https://www.reddit.com', path: '/user/{username}/about.json', wrap: 'data' }),
+  L({ name: 'crates_owners', description: 'Owners of a Rust crate.', kind: 'list', itemType: 'user', baseUrl: 'https://crates.io/api/v1', path: '/crates/{crate}/owners', wrap: 'users', params: { limit: { type: 'number', default: 5, description: 'How many owners (1-50).' } } }),
 ]
 
 /* ------------------------------------------------------------------ */
