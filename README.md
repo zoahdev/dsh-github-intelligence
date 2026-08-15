@@ -58,7 +58,7 @@ All values are optional and set in `cordis.yml`:
 | `defaultLimit` | number | `5` | Default result count when the model omits `limit`. |
 | `bodyPreviewChars` | number | `500` | Maximum characters kept from a release body preview. |
 | `cacheTtlMs` | number | `60000` | In-memory response cache TTL, so composed calls stay cheap. |
-| `userAgent` | string | `dsh-github-intelligence/2.7.0` | User-Agent header sent to the GitHub API. |
+| `userAgent` | string | `dsh-github-intelligence/2.8.0` | User-Agent header sent to the GitHub API. |
 
 ## Why "most complete"
 
@@ -66,7 +66,7 @@ All values are optional and set in `cordis.yml`:
 - **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_weekly_digest` answers "what happened this week"; `github_help` makes the catalog self-discoverable.
 - **Rate-limit friendly**: every endpoint is wrapped in a short TTL cache; the deep report reuses cached sub-calls (4 HTTP requests, not 4+ per repetition).
 - **Correctness**: issues are filtered to exclude pull requests; every request honors `exec.signal`; anonymous rate limits and 429s produce actionable errors.
-- **Verified**: 43 tests, plus a real-network smoke for every v2.3.0..v2.6.0 tool (35 tools) and a live `github_weekly_digest` run, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
+- **Verified**: 44 tests, plus a real-network smoke for every v2.3.0..v2.8.0 tool (37 tools) and a live `github_weekly_digest` run, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
 
 > ⭐ If this helps your agent, a star helps the ecosystem find it. Feedback and issues are equally welcome.
 
@@ -100,6 +100,11 @@ All values are optional and set in `cordis.yml`:
 ## What's new in v2.7.0
 
 - New flagship composite tool: `github_weekly_digest` — one call answers "what happened this week in owner/repo" (releases + merged PRs + new issues + commits, filtered to a configurable look-back window).
+
+## What's new in v2.8.0
+
+- npm downloads depth: `npm_downloads_last_day` and `npm_downloads_range` (per-day downloads between two dates).
+- Also probed and rejected this round: Stack Exchange `/search/answers` (HTTP 400), crates.io dependencies endpoint (unreachable from this network), dev.to podcast episodes (unreachable) — not shipped.
 
 ## Development
 
@@ -191,7 +196,7 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 - **周报**：`github_weekly_digest` 一次回答"这个仓库这周发生了什么"；
 - **省配额**：所有接口带短 TTL 缓存，深度报告复用缓存子调用，一次只发 4 个请求；
 - **正确性**：Issue 自动排除 PR、全部请求支持取消、匿名限流/429 有明确提示；
-- **验证**：43 个测试 + v2.3.0..v2.6.0 全部 35 个新工具真实网络冒烟 + `github_weekly_digest` 真实运行 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
+- **验证**：44 个测试 + v2.3.0..v2.8.0 全部 37 个新工具真实网络冒烟 + `github_weekly_digest` 真实运行 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
 
 > ⭐ 如果它帮到了你的 agent，一个 star 就能让整个生态更容易发现它。反馈和 issue 同样欢迎。
 
@@ -225,6 +230,11 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 ## v2.7.0 新增
 
 - 新旗舰复合工具：`github_weekly_digest`——一次调用回答"owner/repo 这周发生了什么"（release + 合并 PR + 新 issue + 提交，可按天配置窗口）。
+
+## v2.8.0 新增
+
+- npm 下载深度：`npm_downloads_last_day` 与 `npm_downloads_range`（两个日期之间的每日下载量）；
+- 本轮探测后拒绝：Stack Exchange `/search/answers`（HTTP 400）、crates.io 依赖端点（本网络不可达）、dev.to podcast（不可达）——不收录。
 
 ## 开发
 
