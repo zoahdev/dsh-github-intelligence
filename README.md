@@ -1,5 +1,7 @@
 # dsh-github-intelligence
 
+[![CI](https://github.com/zoahdev/dsh-github-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/zoahdev/dsh-github-intelligence/actions) [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
+
 [English](#english) · [中文](#中文)
 
 [![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
