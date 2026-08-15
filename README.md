@@ -2,6 +2,10 @@
 
 [English](#english) · [中文](#中文)
 
+[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+[![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
+[![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
+
 **The most comprehensive developer-intelligence integration for DeepSeek Harness: 140+ read-only tools across 9 ecosystems** — GitHub, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, and Reddit. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
 
 > Topic: [`dsh-plugin`](https://github.com/topics/dsh-plugin) · Tested with `dsh` 0.1.0-rc.6 · Node 24 / pnpm 11
@@ -106,6 +110,10 @@ MIT © 2026 zoahdev
 ---
 
 ## 中文
+
+[![Awesome DSH Plugin](https://awesome-dsh-plugin.com/badge.svg)](https://awesome-dsh-plugin.com)
+[![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
+[![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
 **dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：140+ 只读工具，横跨 9 大生态**（GitHub、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
 
