@@ -65,6 +65,32 @@ pnpm test
 pnpm pack
 ```
 
+## Demo (real output, 2026-08-15)
+
+`github_repo_report` on `deepseek-ai/deepseek-harness`:
+
+```text
+# deepseek-ai/deepseek-harness
+deepseek-ai/deepseek-harness — DeepSeek Harness: Everything is a Plugin.
+Stars: 98472 · Forks: 9214 · Open issues: 0 · Default branch: master
+Language: TypeScript · License: MIT · Pushed: 2026-08-13
+https://github.com/deepseek-ai/deepseek-harness
+
+Latest release: none
+Open issues: 0
+
+Recent commits:
+- 47f9438 Merge pull request #2519 from deepseek-harness/feat/npm-public (imccyu)
+- abe560f release(dsh): 0.1.0-rc.5 (imccyu)
+- 8c1e8d9 build(release): publish the dsh family publicly (imccyu)
+- f26a6f6 Merge pull request #2520 from deepseek-harness/docs/paper (Tianyi Cui)
+- 124aa5f Merge pull request #2521 from deepseek-harness/release/dsh-0.1.0-rc.3 (imccyu)
+
+Top contributors: 1. tianyicui (5235) · 2. LegGasai (1361) · 3. imccyu (1168) · 4. Chinesezjc (587) · 5. turtle1999 (585)
+```
+
+One question answers: what is this repo, what did it ship, who maintains it, and is it alive.
+
 ## License
 
 MIT © 2026 zoahdev
@@ -119,6 +145,32 @@ pnpm run build
 pnpm test
 pnpm pack
 ```
+
+## 演示（真实输出，2026-08-15）
+
+`github_repo_report` 对 `deepseek-ai/deepseek-harness` 的实际结果：
+
+```text
+# deepseek-ai/deepseek-harness
+deepseek-ai/deepseek-harness — DeepSeek Harness: Everything is a Plugin.
+Stars: 98472 · Forks: 9214 · Open issues: 0 · Default branch: master
+Language: TypeScript · License: MIT · Pushed: 2026-08-13
+https://github.com/deepseek-ai/deepseek-harness
+
+Latest release: none
+Open issues: 0
+
+Recent commits:
+- 47f9438 Merge pull request #2519 from deepseek-harness/feat/npm-public (imccyu)
+- abe560f release(dsh): 0.1.0-rc.5 (imccyu)
+- 8c1e8d9 build(release): publish the dsh family publicly (imccyu)
+- f26a6f6 Merge pull request #2520 from deepseek-harness/docs/paper (Tianyi Cui)
+- 124aa5f Merge pull request #2521 from deepseek-harness/release/dsh-0.1.0-rc.3 (imccyu)
+
+Top contributors: 1. tianyicui (5235) · 2. LegGasai (1361) · 3. imccyu (1168) · 4. Chinesezjc (587) · 5. turtle1999 (585)
+```
+
+一次提问回答三件事：这仓库是什么、最近发了什么、谁在维护、还活着吗。
 
 ## 许可证
 
