@@ -1200,6 +1200,23 @@ const objectParsers: Record<string, (raw: unknown) => unknown> = {
       downloads: n(r.downloads),
     }
   },
+  npmDownloadsRange(raw) {
+    const r = raw as Record<string, unknown>
+    const list = Array.isArray(r.downloads)
+      ? (r.downloads as unknown[]).map((entry): { day: string; downloads: number } | null => {
+          const e = entry as Record<string, unknown>
+          if (e === null || typeof e !== 'object') return null
+          const day = s(e.day)
+          return day === null ? null : { day, downloads: n(e.downloads) }
+        }).filter((entry): entry is { day: string; downloads: number } => entry !== null)
+      : []
+    return {
+      package: s(r.package) ?? '',
+      start: s(r.start) ?? '',
+      end: s(r.end) ?? '',
+      downloads: list,
+    }
+  },
   gitlabProjectDetail(raw) {
     const r = raw as Record<string, unknown>
     return {
@@ -1590,6 +1607,9 @@ const objectSchemas: Record<string, object> = {
   npmDownloads: { type: 'object', additionalProperties: false, properties: {
     package: strSchema(), start: strSchema(), end: strSchema(), downloads: intSchema(),
   } },
+  npmDownloadsRange: { type: 'object', additionalProperties: false, properties: {
+    package: strSchema(), start: strSchema(), end: strSchema(), downloads: { type: 'array', required: true, items: { type: 'object', additionalProperties: false, properties: { day: strSchema(), downloads: intSchema() } } },
+  } },
   gitlabProjectDetail: { type: 'object', additionalProperties: false, properties: {
     id: intSchema(), name: strSchema(), description: nullableStr(), stars: intSchema(), forks: intSchema(), webUrl: strSchema(), defaultBranch: nullableStr(), visibility: nullableStr(), createdAt: nullableStr(), lastActivityAt: nullableStr(),
   } },
@@ -1701,6 +1721,7 @@ const objectFormatters: Record<string, (item: Record<string, unknown>) => string
   redditAbout: (i) => `r/${i.subreddit} — ${i.subscribers} subscribers, ${i.activeUsers} active · ${i.description ?? ''} · created ${i.created ?? '?'}`,
   dshEcosystemStats: (i) => `${i.pluginCount} plugins tracked by ${i.source}`,
   npmDownloads: (i) => `${i.package}: ${i.downloads} downloads (${i.start} → ${i.end})`,
+  npmDownloadsRange: (i) => `${i.package}: ${(i.downloads as unknown[]).length} daily points (${i.start} → ${i.end})\n${(i.downloads as Array<Record<string, unknown>>).slice(0, 15).map((d) => `- ${d.day}: ${d.downloads}`).join('\n')}`,
   gitlabProjectDetail: (i) => `${i.name} (★${i.stars}, ${i.forks} forks, ${i.visibility ?? '?'}) — ${i.description ?? ''}\n${i.webUrl}`,
   giteeRepoDetail: (i) => `${i.fullName} (★${i.stars}, ${i.forks} forks, ${i.language ?? 'n/a'}, ${i.license ?? 'n/a'}) — ${i.description ?? ''}\n${i.htmlUrl}`,
   gitlabIssue: (i) => `!${i.iid} ${i.title} [${i.state}] (@${i.author}, ${i.comments} comments) ${i.webUrl}`,
@@ -1856,6 +1877,8 @@ export const catalog: ToolSpec[] = [
   L({ name: 'npm_package_versions', description: 'Version history of an npm package with publish dates.', kind: 'object', itemType: 'npmVersions', baseUrl: 'https://registry.npmjs.org', path: '/{package}' }),
   L({ name: 'npm_downloads_last_week', description: 'Download counts of an npm package over the last week.', kind: 'object', itemType: 'npmDownloads', baseUrl: 'https://api.npmjs.org', path: '/downloads/point/last-week/{package}' }),
   L({ name: 'npm_downloads_last_month', description: 'Download counts of an npm package over the last month.', kind: 'object', itemType: 'npmDownloads', baseUrl: 'https://api.npmjs.org', path: '/downloads/point/last-month/{package}' }),
+  L({ name: 'npm_downloads_last_day', description: 'Download counts of an npm package for the last day.', kind: 'object', itemType: 'npmDownloads', baseUrl: 'https://api.npmjs.org', path: '/downloads/point/last-day/{package}' }),
+  L({ name: 'npm_downloads_range', description: 'Per-day download counts of an npm package between two dates (YYYY-MM-DD).', kind: 'object', itemType: 'npmDownloadsRange', baseUrl: 'https://api.npmjs.org', path: '/downloads/range/{start}:{end}/{package}', params: { start: { type: 'string', required: true, description: 'Start date YYYY-MM-DD.' }, end: { type: 'string', required: true, description: 'End date YYYY-MM-DD.' } } }),
   L({ name: 'npm_package_dependencies', description: 'Direct runtime dependencies of an npm package at its latest version.', kind: 'object', itemType: 'npmDependencies', baseUrl: 'https://registry.npmjs.org', path: '/{package}' }),
   // rubygems
   L({ name: 'rubygems_search', description: 'Search RubyGems packages by name or keyword.', kind: 'list', itemType: 'rubygemHit', baseUrl: 'https://rubygems.org/api/v1', path: '/search.json', params: { query: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', default: 5, description: 'How many gems (1-50).' } } }),
