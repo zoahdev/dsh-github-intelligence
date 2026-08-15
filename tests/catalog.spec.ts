@@ -105,4 +105,18 @@ describe('generated tools', () => {
     const result = await tool.execute({ owner: 'gitee', repo: 'harness' }, exec())
     expect(result).toMatchObject({ item: { fullName: 'gitee/harness', stars: 7, license: 'MIT' } })
   })
+
+  it('decodes file content from the contents endpoint', async () => {
+    const fetch = fetcherMock(() => ({
+      name: 'README.md',
+      path: 'README.md',
+      size: 5,
+      content: Buffer.from('hello').toString('base64'),
+      html_url: 'https://github.com/x/y/blob/main/README.md',
+    }))
+    const spec = catalog.find((s) => s.name === 'github_repo_file_content')
+    const tool = buildCatalogTool(fetch, spec!)
+    const result = await tool.execute({ owner: 'x', repo: 'y', path: 'README.md' }, exec())
+    expect(result).toMatchObject({ item: { path: 'README.md', contentText: 'hello' } })
+  })
 })
