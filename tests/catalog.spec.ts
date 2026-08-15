@@ -269,6 +269,12 @@ describe('generated tools', () => {
     }
   })
 
+  it('ships the v2.6.0 tool set (go/crates/gitee/gitlab/so)', () => {
+    for (const name of ['go_module_latest', 'crates_crate_versions', 'gitee_repo_contributors', 'gitlab_project_tags', 'so_related_tags']) {
+      expect(catalog.some((spec) => spec.name === name), `missing ${name}`).toBe(true)
+    }
+  })
+
   it('parses the v2.4.0 tools from realistic fixtures', async () => {
     const cases: Array<{ name: string; args: Record<string, unknown>; fixture: unknown; expected: Record<string, unknown> }> = [
       {
@@ -360,6 +366,31 @@ describe('generated tools', () => {
         name: 'nuget_search', args: { q: 'serilog', take: 3 },
         fixture: { data: [{ id: 'Serilog', version: '4.0.1', description: 'logging', totalDownloads: 100000, projectUrl: null, authors: ['nblumhardt'], tags: ['logging'] }] },
         expected: { source: 'query: serilog', items: [{ id: 'Serilog', version: '4.0.1', downloads: 100000, authors: ['nblumhardt'] }] },
+      },
+      {
+        name: 'go_module_latest', args: { module: 'github.com/gin-gonic/gin' },
+        fixture: { Version: 'v1.10.0', Time: '2024-09-10T15:00:00Z', Origin: 'https://github.com/gin-gonic/gin' },
+        expected: { item: { version: 'v1.10.0', time: '2024-09-10', origin: 'https://github.com/gin-gonic/gin' } },
+      },
+      {
+        name: 'crates_crate_versions', args: { crate: 'serde' },
+        fixture: { versions: [{ num: '1.0.219', downloads: 5000, created_at: '2024-09-01T00:00:00Z', yanked: false }] },
+        expected: { items: [{ num: '1.0.219', downloads: 5000, yanked: false }] },
+      },
+      {
+        name: 'gitee_repo_contributors', args: { owner: 'o', repo: 'r' },
+        fixture: [{ name: 'u', email: null, contributions: 9 }],
+        expected: { items: [{ name: 'u', contributions: 9 }] },
+      },
+      {
+        name: 'gitlab_project_tags', args: { projectId: 'gitlab-org/gitlab' },
+        fixture: [{ name: 'v17.0.0', message: 'release', protected: true, target: 'abc', created_at: '2024-05-15T00:00:00Z' }],
+        expected: { items: [{ name: 'v17.0.0', protected: true, sha: 'abc' }] },
+      },
+      {
+        name: 'so_related_tags', args: { tag: 'typescript' },
+        fixture: { items: [{ name: 'javascript', count: 2500000 }] },
+        expected: { items: [{ name: 'javascript', count: 2500000 }] },
       },
     ]
     for (const c of cases) {
