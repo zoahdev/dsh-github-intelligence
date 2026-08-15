@@ -78,6 +78,68 @@ describe('github_repo tool', () => {
   })
 })
 
+describe('github_weekly_digest tool', () => {
+  it('filters activity to the requested look-back window', async () => {
+    const now = Date.now()
+    const fresh = (offsetDays: number): string => new Date(now - offsetDays * 86_400_000).toISOString()
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url)
+      if (u.includes('/releases?')) {
+        return jsonResponse([{ tag_name: 'v1', name: null, published_at: fresh(2), prerelease: false, html_url: 'https://x/r' }])
+      }
+      if (u.includes('/pulls?')) {
+        return jsonResponse([{ number: 1, title: 'p', state: 'closed', user: { login: 'u' }, created_at: fresh(10), merged_at: fresh(3), html_url: 'https://x/p' }])
+      }
+      if (u.includes('/issues?')) {
+        return jsonResponse([{ number: 2, title: 'i', state: 'open', user: { login: 'u' }, comments: 0, created_at: fresh(4), html_url: 'https://x/i' }])
+      }
+      if (u.includes('/commits?')) {
+        return jsonResponse([{ sha: 'abc', commit: { message: 'm', author: { name: 'u', date: fresh(5) } }, html_url: 'https://x/c' }])
+      }
+      return jsonResponse([])
+    }))
+    const tools = defineTools(resolvedConfig()) as unknown as Array<{
+      name: string
+      execute: (args: Record<string, unknown>, exec: { signal: AbortSignal }) => Promise<Record<string, unknown>>
+    }>
+    const digest = tools.find((tool) => tool.name === 'github_weekly_digest')
+    expect(digest).toBeDefined()
+    const week = await digest!.execute({ owner: 'x', repo: 'y', days: 7 }, exec())
+    expect(week.releases).toHaveLength(1)
+    expect(week.mergedPulls).toHaveLength(1)
+    expect(week.newIssues).toHaveLength(1)
+    expect(week.commits).toHaveLength(1)
+    const day = await digest!.execute({ owner: 'x', repo: 'y', days: 1 }, exec())
+    expect(day.releases).toHaveLength(0)
+    expect(day.mergedPulls).toHaveLength(0)
+    expect(day.newIssues).toHaveLength(0)
+    expect(day.commits).toHaveLength(0)
+  })
+
+  it('tolerates a 404 on one surface (e.g. pull requests disabled)', async () => {
+    const now = Date.now()
+    const fresh = (offsetDays: number): string => new Date(now - offsetDays * 86_400_000).toISOString()
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url)
+      if (u.includes('/pulls?')) return { ok: false, status: 404, json: async () => ({}) } as Response
+      if (u.includes('/releases?')) {
+        return jsonResponse([{ tag_name: 'v1', name: null, published_at: fresh(2), prerelease: false, html_url: 'https://x/r' }])
+      }
+      if (u.includes('/issues?')) return jsonResponse([])
+      if (u.includes('/commits?')) return jsonResponse([])
+      return jsonResponse([])
+    }))
+    const tools = defineTools(resolvedConfig()) as unknown as Array<{
+      name: string
+      execute: (args: Record<string, unknown>, exec: { signal: AbortSignal }) => Promise<Record<string, unknown>>
+    }>
+    const digest = tools.find((tool) => tool.name === 'github_weekly_digest')
+    const result = await digest!.execute({ owner: 'x', repo: 'y', days: 7 }, exec())
+    expect(result.mergedPulls).toEqual([])
+    expect(result.releases).toHaveLength(1)
+  })
+})
+
 describe('github_issues tool', () => {
   it('lists open issues by default', async () => {
     const fetchMock = vi.fn(async () => jsonResponse([
