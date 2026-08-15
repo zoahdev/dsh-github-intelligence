@@ -78,4 +78,31 @@ describe('generated tools', () => {
     const result = await help.execute({}, exec())
     expect(result).toMatchObject({ total: catalog.length + 10 })
   })
+
+  it('executes a GitLab search tool', async () => {
+    const fetch = fetcherMock(() => [
+      { id: 1, name: 'harness', path_with_namespace: 'deepseek-ai/harness', description: 'd', star_count: 9, forks_count: 2, last_activity_at: '2026-08-01T00:00:00Z', web_url: 'https://gitlab.com/x' },
+    ])
+    const spec = catalog.find((s) => s.name === 'gitlab_search')
+    const tool = buildCatalogTool(fetch, spec!)
+    const result = await tool.execute({ q: 'harness' }, exec())
+    expect(result).toMatchObject({ source: 'query: harness', items: [{ name: 'harness', stars: 9 }] })
+  })
+
+  it('executes a Gitee repo tool', async () => {
+    const fetch = fetcherMock(() => ({
+      full_name: 'gitee/harness',
+      description: 'd',
+      stargazers_count: 7,
+      forks_count: 1,
+      language: 'Go',
+      license: { name: 'MIT' },
+      html_url: 'https://gitee.com/x',
+      updated_at: '2026-08-01T00:00:00Z',
+    }))
+    const spec = catalog.find((s) => s.name === 'gitee_repo')
+    const tool = buildCatalogTool(fetch, spec!)
+    const result = await tool.execute({ owner: 'gitee', repo: 'harness' }, exec())
+    expect(result).toMatchObject({ item: { fullName: 'gitee/harness', stars: 7, license: 'MIT' } })
+  })
 })
