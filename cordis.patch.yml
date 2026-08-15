@@ -1,0 +1,5 @@
+- insert:
+    - id: github-intelligence
+      name: dsh-github-intelligence
+      config:
+        cacheTtlMs: 60000

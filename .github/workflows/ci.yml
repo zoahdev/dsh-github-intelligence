@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-load:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: pnpm test
+      - name: Pack
+        run: pnpm pack
+      - name: Install plugin into a fresh dsh profile
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-home
+        run: |
+          pnpm dlx @deepseek-ai/dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
+          pnpm dlx @deepseek-ai/dsh --profile web --dump-config | grep -q github-intelligence
+      - name: Boot dsh web with the plugin loaded
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-home
+        run: |
+          pnpm dlx @deepseek-ai/dsh web --port 4111 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:4111 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
