@@ -23,6 +23,8 @@ import {
   type GitHubRepo,
   type GitHubRepoHit,
 } from './github.js'
+import { buildCatalogTool, buildHelpTool, catalog, type Fetcher } from './catalog.js'
+import { EcosystemClient } from './ecosystems.js'
 
 export const name = 'github-intelligence'
 
@@ -52,7 +54,7 @@ export const Config: Schema<Config> = Schema.object({
   defaultLimit: Schema.number().default(5),
   bodyPreviewChars: Schema.number().default(500),
   cacheTtlMs: Schema.number().default(60_000),
-  userAgent: Schema.string().default('dsh-github-intelligence/1.0.0'),
+  userAgent: Schema.string().default('dsh-github-intelligence/2.0.0'),
 })
 
 function assertPositiveInteger(name: string, value: number): void {
@@ -73,7 +75,7 @@ function clampLimit(value: number): number {
 
 function clientOptions(config: Config): GitHubClientOptions {
   const options: GitHubClientOptions = {
-    userAgent: config.userAgent ?? 'dsh-github-intelligence/1.0.0',
+    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.0.0',
     timeoutMs: config.timeoutMs ?? 10_000,
     bodyPreviewChars: config.bodyPreviewChars ?? 500,
     cacheTtlMs: config.cacheTtlMs ?? 60_000,
@@ -109,6 +111,37 @@ function renderSearch(value: { query: string; items: GitHubRepoHit[] }): string 
   return `Top results for "${value.query}":\n` + value.items.map((item, index) => {
     return `${index + 1}. ${item.fullName} (★${item.stars}) — ${item.description ?? 'no description'} ${item.htmlUrl}`
   }).join('\n')
+}
+
+function renderTrending(value: { period: string; language: string | null; items: GitHubRepoHit[] }): string {
+  if (value.items.length === 0) return `No trending repositories found for the last ${value.period}.`
+  const filter = value.language !== null ? ` (language: ${value.language})` : ''
+  return `Trending repositories created in the last ${value.period}${filter}:\n` + value.items.map((item, index) => {
+    return `${index + 1}. ${item.fullName} (★${item.stars}, ${item.language ?? 'n/a'}) — ${item.description ?? 'no description'} ${item.htmlUrl}`
+  }).join('\n')
+}
+
+function renderUserRepos(value: { username: string; repos: GitHubRepoHit[] }): string {
+  if (value.repos.length === 0) return `No repositories found for ${value.username}.`
+  return `Top repositories of ${value.username}:\n` + value.repos.map((item, index) => {
+    return `${index + 1}. ${item.fullName} (★${item.stars}) — ${item.description ?? 'no description'} ${item.htmlUrl}`
+  }).join('\n')
+}
+
+function renderCompare(value: {
+  first: { fullName: string; stars: number; forks: number; openIssues: number; language: string | null; license: string | null; pushedAt: string | null }
+  second: { fullName: string; stars: number; forks: number; openIssues: number; language: string | null; license: string | null; pushedAt: string | null }
+  deltas: { stars: number; forks: number; openIssues: number }
+}): string {
+  return [
+    `Comparing ${value.first.fullName} vs ${value.second.fullName}:`,
+    `Stars: ${value.first.stars} vs ${value.second.stars} (${value.deltas.stars >= 0 ? '+' : ''}${value.deltas.stars})`,
+    `Forks: ${value.first.forks} vs ${value.second.forks} (${value.deltas.forks >= 0 ? '+' : ''}${value.deltas.forks})`,
+    `Open issues: ${value.first.openIssues} vs ${value.second.openIssues} (${value.deltas.openIssues >= 0 ? '+' : ''}${value.deltas.openIssues})`,
+    `Language: ${value.first.language ?? 'n/a'} vs ${value.second.language ?? 'n/a'}`,
+    `License: ${value.first.license ?? 'n/a'} vs ${value.second.license ?? 'n/a'}`,
+    `Last push: ${value.first.pushedAt?.slice(0, 10) ?? 'n/a'} vs ${value.second.pushedAt?.slice(0, 10) ?? 'n/a'}`,
+  ].join('\n')
 }
 
 function renderIssues(value: { fullName: string; state: string; issues: GitHubIssue[] }): string {
@@ -556,7 +589,196 @@ export function defineTools(config: Config) {
     presentCall: (args) => ({ card: 'generic', title: `GitHub report: ${args.owner}/${args.repo}`, kind: 'search', rawInput: args }),
   })
 
-  return [repo, releases, search, issues, pulls, contributors, report] as const
+  const compare = defineTool({
+    name: 'github_compare',
+    description:
+      'Compare two public GitHub repositories side by side: stars, forks, open issues, language, '
+      + 'license, and last push time, with numeric deltas. Use it for "which project is healthier" '
+      + 'questions and framework bake-offs. Sub-calls reuse the cache.',
+    parameters: {
+      ownerA: { type: 'string', required: true, description: 'Owner of the first repository.' },
+      repoA: { type: 'string', required: true, description: 'Name of the first repository.' },
+      ownerB: { type: 'string', required: true, description: 'Owner of the second repository.' },
+      repoB: { type: 'string', required: true, description: 'Name of the second repository.' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          first: {
+            type: 'object',
+            additionalProperties: false,
+            required: true,
+            properties: {
+              fullName: { type: 'string', required: true },
+              stars: { type: 'integer', required: true },
+              forks: { type: 'integer', required: true },
+              openIssues: { type: 'integer', required: true },
+              language: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+              license: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+              pushedAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+            },
+          },
+          second: {
+            type: 'object',
+            additionalProperties: false,
+            required: true,
+            properties: {
+              fullName: { type: 'string', required: true },
+              stars: { type: 'integer', required: true },
+              forks: { type: 'integer', required: true },
+              openIssues: { type: 'integer', required: true },
+              language: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+              license: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+              pushedAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+            },
+          },
+          deltas: {
+            type: 'object',
+            additionalProperties: false,
+            required: true,
+            properties: {
+              stars: { type: 'integer', required: true },
+              forks: { type: 'integer', required: true },
+              openIssues: { type: 'integer', required: true },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: renderCompare(value) }],
+    },
+    async execute(args, exec) {
+      assertOwnerRepo(args.ownerA, args.repoA)
+      assertOwnerRepo(args.ownerB, args.repoB)
+      const [first, second] = await Promise.all([
+        client.getRepo(args.ownerA, args.repoA, exec.signal),
+        client.getRepo(args.ownerB, args.repoB, exec.signal),
+      ])
+      return {
+        first: {
+          fullName: first.fullName,
+          stars: first.stars,
+          forks: first.forks,
+          openIssues: first.openIssues,
+          language: first.language,
+          license: first.license,
+          pushedAt: first.pushedAt,
+        },
+        second: {
+          fullName: second.fullName,
+          stars: second.stars,
+          forks: second.forks,
+          openIssues: second.openIssues,
+          language: second.language,
+          license: second.license,
+          pushedAt: second.pushedAt,
+        },
+        deltas: {
+          stars: first.stars - second.stars,
+          forks: first.forks - second.forks,
+          openIssues: first.openIssues - second.openIssues,
+        },
+      }
+    },
+    presentCall: (args) => ({
+      card: 'generic',
+      title: `GitHub compare: ${args.ownerA}/${args.repoA} vs ${args.ownerB}/${args.repoB}`,
+      kind: 'search',
+      rawInput: args,
+    }),
+  })
+
+  const trending = defineTool({
+    name: 'github_trending',
+    description:
+      'Find recently trending public repositories: repositories created within the last few days, '
+      + 'sorted by stars. Optionally filter by language. Use it for "what is hot right now" questions.',
+    parameters: {
+      limit: { type: 'number', description: 'How many repositories to return (1-50). Defaults to the configured defaultLimit (5).' },
+      language: { type: 'string', description: 'Optional language filter, e.g. TypeScript.' },
+      sinceDays: { type: 'number', description: 'Look back window in days (1-30). Defaults to 7.' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          period: { type: 'string', required: true },
+          language: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+          items: {
+            type: 'array',
+            required: true,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                fullName: { type: 'string', required: true },
+                description: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                stars: { type: 'integer', required: true },
+                language: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                updatedAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                htmlUrl: { type: 'string', required: true },
+              },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: renderTrending(value) }],
+    },
+    async execute(args, exec) {
+      const days = Math.min(Math.max(Math.trunc(args.sinceDays ?? 7), 1), 30)
+      const language = args.language !== undefined && args.language.trim() !== '' ? args.language.trim() : null
+      const items = await client.trending(clampLimit(args.limit ?? config.defaultLimit ?? 5), language ?? undefined, days, exec.signal)
+      return { period: `${days} days`, language, items }
+    },
+    presentCall: (args) => ({ card: 'generic', title: 'GitHub trending', kind: 'search', rawInput: args }),
+  })
+
+  const userRepos = defineTool({
+    name: 'github_user_repos',
+    description:
+      'List the top repositories of a GitHub user or organization, sorted by stars, excluding forks. '
+      + 'Use it to explore a developer\'s portfolio or an organization\'s most important projects.',
+    parameters: {
+      username: { type: 'string', required: true, description: 'GitHub username or organization, e.g. deepseek-ai.' },
+      limit: { type: 'number', description: 'How many repositories to return (1-50). Defaults to the configured defaultLimit (5).' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          username: { type: 'string', required: true },
+          repos: {
+            type: 'array',
+            required: true,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                fullName: { type: 'string', required: true },
+                description: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                stars: { type: 'integer', required: true },
+                language: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                updatedAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                htmlUrl: { type: 'string', required: true },
+              },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: renderUserRepos(value) }],
+    },
+    async execute(args, exec) {
+      if (args.username.trim() === '') throw new Error('github-intelligence: `username` must be a non-empty string')
+      const repos = await client.listUserRepos(args.username.trim(), clampLimit(args.limit ?? config.defaultLimit ?? 5), exec.signal)
+      return { username: args.username.trim(), repos }
+    },
+    presentCall: (args) => ({ card: 'generic', title: `GitHub repos: ${args.username}`, kind: 'search', rawInput: args }),
+  })
+
+  return [repo, releases, search, issues, pulls, contributors, report, compare, trending, userRepos] as const
 }
 
 /**
@@ -572,4 +794,19 @@ export function apply(ctx: Context, config: Config): void {
   for (const tool of defineTools(config)) {
     ctx.tools.register(tool)
   }
+  const githubClient = new GitHubClient(clientOptions(config))
+  const options = clientOptions(config)
+  const ecosystemClient = new EcosystemClient({
+    userAgent: options.userAgent,
+    timeoutMs: options.timeoutMs,
+    cacheTtlMs: options.cacheTtlMs,
+  })
+  const githubFetcher: Fetcher = (path, signal, cacheKey) => githubClient.raw(path, signal, cacheKey)
+  for (const spec of catalog) {
+    const fetcher: Fetcher = spec.baseUrl !== undefined
+      ? (path, signal, cacheKey) => ecosystemClient.raw(`${spec.baseUrl}${path}`, signal, cacheKey)
+      : githubFetcher
+    ctx.tools.register(buildCatalogTool(fetcher, spec))
+  }
+  ctx.tools.register(buildHelpTool(catalog.length + 10))
 }
