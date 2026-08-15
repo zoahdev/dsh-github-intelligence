@@ -275,6 +275,12 @@ describe('generated tools', () => {
     }
   })
 
+  it('ships the v2.8.0 tool set (npm downloads)', () => {
+    for (const name of ['npm_downloads_last_day', 'npm_downloads_range']) {
+      expect(catalog.some((spec) => spec.name === name), `missing ${name}`).toBe(true)
+    }
+  })
+
   it('parses the v2.4.0 tools from realistic fixtures', async () => {
     const cases: Array<{ name: string; args: Record<string, unknown>; fixture: unknown; expected: Record<string, unknown> }> = [
       {
@@ -391,6 +397,16 @@ describe('generated tools', () => {
         name: 'so_related_tags', args: { tag: 'typescript' },
         fixture: { items: [{ name: 'javascript', count: 2500000 }] },
         expected: { items: [{ name: 'javascript', count: 2500000 }] },
+      },
+      {
+        name: 'npm_downloads_last_day', args: { package: 'lodash' },
+        fixture: { package: 'lodash', start: '2026-08-14', end: '2026-08-14', downloads: 1000 },
+        expected: { item: { package: 'lodash', downloads: 1000 } },
+      },
+      {
+        name: 'npm_downloads_range', args: { package: 'lodash', start: '2026-08-01', end: '2026-08-03' },
+        fixture: { package: 'lodash', start: '2026-08-01', end: '2026-08-03', downloads: [{ day: '2026-08-01', downloads: 100 }, { day: '2026-08-02', downloads: 120 }, { day: '2026-08-03', downloads: 90 }] },
+        expected: { item: { package: 'lodash', downloads: [{ day: '2026-08-01', downloads: 100 }, { day: '2026-08-02', downloads: 120 }, { day: '2026-08-03', downloads: 90 }] } },
       },
     ]
     for (const c of cases) {
