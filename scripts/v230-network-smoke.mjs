@@ -23,7 +23,7 @@ async function fetcher(path, signal) {
 }
 
 const cases = [
-  ['github_user_repos', { username: 'zoahdev' }],
+  ['github_user_repositories', { username: 'zoahdev' }],
   ['github_user_social_accounts', { username: 'zoahdev' }],
   ['github_repo_releases', { owner: 'deepseek-ai', repo: 'deepseek-harness' }],
   ['github_repo_issues', { owner: 'deepseek-ai', repo: 'deepseek-harness', state: 'open' }],
