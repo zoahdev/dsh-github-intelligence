@@ -873,6 +873,41 @@ const parsers: Record<string, (raw: unknown, name?: unknown) => unknown> = {
       tags,
     }
   },
+  goModuleLatest(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      version: s(r.Version) ?? '',
+      time: d(r.Time),
+      origin: s(r.Origin),
+    }
+  },
+  cratesVersion(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      num: s(r.num) ?? '',
+      downloads: n(r.downloads),
+      createdAt: d(r.created_at),
+      yanked: r.yanked === true,
+    }
+  },
+  giteeContributor(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      name: s(r.name) ?? 'unknown',
+      email: s(r.email),
+      contributions: n(r.contributions),
+    }
+  },
+  gitlabTag(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      name: s(r.name) ?? '',
+      message: s(r.message),
+      protected: r.protected === true,
+      sha: s(r.target),
+      createdAt: d(r.created_at),
+    }
+  },
   deploymentStatus(raw) {
     const r = raw as Record<string, unknown>
     return {
@@ -1473,6 +1508,18 @@ const itemSchemas: Record<string, object> = {
   nugetHit: { type: 'object', additionalProperties: false, properties: {
     id: strSchema(), version: nullableStr(), description: nullableStr(), downloads: intSchema(), projectUrl: nullableStr(), authors: { type: 'array', required: true, items: { type: 'string' } }, tags: { type: 'array', required: true, items: { type: 'string' } },
   } },
+  goModuleLatest: { type: 'object', additionalProperties: false, properties: {
+    version: strSchema(), time: nullableStr(), origin: nullableStr(),
+  } },
+  cratesVersion: { type: 'object', additionalProperties: false, properties: {
+    num: strSchema(), downloads: intSchema(), createdAt: nullableStr(), yanked: boolSchema(),
+  } },
+  giteeContributor: { type: 'object', additionalProperties: false, properties: {
+    name: strSchema(), email: nullableStr(), contributions: intSchema(),
+  } },
+  gitlabTag: { type: 'object', additionalProperties: false, properties: {
+    name: strSchema(), message: nullableStr(), protected: boolSchema(), sha: nullableStr(), createdAt: nullableStr(),
+  } },
 }
 
 const objectSchemas: Record<string, object> = {
@@ -1672,6 +1719,10 @@ const objectFormatters: Record<string, (item: Record<string, unknown>) => string
   rubygemHit: (i) => `${i.name} (${i.version ?? '?'}, ${i.downloads} downloads) — ${i.info ?? ''} ${i.projectUrl ?? ''}`,
   rubygemDetail: (i) => `${i.name} ${i.version} (${i.downloads} downloads) — ${i.info ?? ''}\nauthors: ${i.authors ?? 'n/a'} · licenses: ${(i.licenses as string[]).join(', ') || 'n/a'}\n${i.homepage ?? ''} ${i.projectUrl ?? ''}`,
   nugetHit: (i) => `${i.id} (${i.version ?? '?'}, ${i.downloads} downloads) — ${i.description ?? ''} ${i.projectUrl ?? ''}`,
+  goModuleLatest: (i) => `${i.version} (${i.time ?? '?'})${i.origin ? ` · origin: ${i.origin}` : ''}`,
+  cratesVersion: (i) => `${i.num} (${i.downloads} downloads, ${i.createdAt ?? '?'})${i.yanked ? ' [yanked]' : ''}`,
+  giteeContributor: (i) => `${i.name} — ${i.contributions} contributions`,
+  gitlabTag: (i) => `${i.name} (${i.sha ?? '?'})${i.protected ? ' [protected]' : ''} ${i.message ?? ''}`,
   soUser: (i) => `${i.displayName} (reputation ${i.reputation}${i.location ? `, ${i.location}` : ''}) ${i.link}`,
   redditUser: (i) => `u/${i.name} (${i.linkKarma} link karma, ${i.commentKarma} comment karma, since ${i.created ?? '?'})`,
 }
@@ -1811,12 +1862,15 @@ export const catalog: ToolSpec[] = [
   L({ name: 'rubygems_gem', description: 'Details of a RubyGem by exact name: version, downloads, licenses, homepage, source.', kind: 'object', itemType: 'rubygemDetail', baseUrl: 'https://rubygems.org/api/v1', path: '/gems/{gem}.json' }),
   // nuget
   L({ name: 'nuget_search', description: 'Search NuGet packages by id or keyword.', kind: 'list', itemType: 'nugetHit', baseUrl: 'https://azuresearch-usnc.nuget.org', path: '/query', wrap: 'data', params: { q: { type: 'string', required: true, description: 'Search query.' }, take: { type: 'number', default: 5, description: 'How many packages (1-50).' } } }),
+  // go proxy
+  L({ name: 'go_module_latest', description: 'Latest released version of a Go module from the official Go module proxy.', kind: 'object', itemType: 'goModuleLatest', baseUrl: 'https://proxy.golang.org', path: '/{module}/@latest' }),
   // PyPI
   L({ name: 'pypi_project', description: 'Metadata of a PyPI project: summary, latest version, author, license, Python requirement.', kind: 'object', itemType: 'pypiProject', baseUrl: 'https://pypi.org/pypi', path: '/{package}/json' }),
   L({ name: 'pypi_versions', description: 'Version history of a PyPI project with upload dates and file counts.', kind: 'object', itemType: 'pypiVersions', baseUrl: 'https://pypi.org/pypi', path: '/{package}/json' }),
   // crates.io
   L({ name: 'crates_search', description: 'Search Rust crates on crates.io.', kind: 'list', itemType: 'crateSearchHit', baseUrl: 'https://crates.io/api/v1', path: '/crates', wrap: 'crates', params: { q: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', default: 5, description: 'How many results (1-50).' } } }),
   L({ name: 'crates_crate', description: 'Details of a Rust crate: downloads, recent downloads, latest version, links.', kind: 'object', itemType: 'crateInfo', baseUrl: 'https://crates.io/api/v1', path: '/crates/{crate}', wrap: 'crate' }),
+  L({ name: 'crates_crate_versions', description: 'Version history of a Rust crate with per-version downloads and yank status.', kind: 'list', itemType: 'cratesVersion', baseUrl: 'https://crates.io/api/v1', path: '/crates/{crate}', wrap: 'versions', params: { limit: { type: 'number', default: 10, description: 'How many versions (1-50).' } } }),
   L({ name: 'crates_versions', description: 'Version history of a Rust crate.', kind: 'list', itemType: 'crateVersion', baseUrl: 'https://crates.io/api/v1', path: '/crates/{crate}/versions', wrap: 'versions', params: { limit: { type: 'number', default: 5, description: 'How many versions (1-50).' } } }),
   L({ name: 'crates_downloads', description: 'Download totals of a Rust crate.', kind: 'object', itemType: 'crateDownloads', baseUrl: 'https://crates.io/api/v1', path: '/crates/{crate}/downloads' }),
   // Docker Hub
@@ -1840,6 +1894,7 @@ export const catalog: ToolSpec[] = [
   L({ name: 'so_question', description: 'A Stack Overflow question by id with its body text.', kind: 'object', itemType: 'soQuestionDetail', baseUrl: 'https://api.stackexchange.com/2.3', path: '/questions/{questionId}', wrap: 'items', params: { site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' } } }),
   L({ name: 'so_question_answers', description: 'Top-voted answers to a Stack Overflow question.', kind: 'list', itemType: 'soAnswer', baseUrl: 'https://api.stackexchange.com/2.3', path: '/questions/{questionId}/answers', wrap: 'items', params: { site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' }, limit: { type: 'number', default: 5, description: 'How many answers (1-50).' } } }),
   L({ name: 'so_top_tags', description: 'Most popular Stack Overflow tags by question count.', kind: 'list', itemType: 'soTag', baseUrl: 'https://api.stackexchange.com/2.3', path: '/tags', wrap: 'items', params: { site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' }, limit: { type: 'number', default: 10, description: 'How many tags (1-50).' } } }),
+  L({ name: 'so_related_tags', description: 'Tags related to a Stack Overflow tag.', kind: 'list', itemType: 'soTag', baseUrl: 'https://api.stackexchange.com/2.3', path: '/tags/{tag}/related', wrap: 'items', params: { site: { type: 'string', default: 'stackoverflow', description: 'Stack Exchange site.' }, limit: { type: 'number', default: 10, description: 'How many tags (1-50).' } } }),
   // Reddit
   L({ name: 'reddit_subreddit_hot', description: 'Hot posts of a subreddit.', kind: 'list', itemType: 'redditPost', baseUrl: 'https://www.reddit.com', path: '/r/{subreddit}/hot.json', wrap: 'children', params: { limit: { type: 'number', default: 5, description: 'How many posts (1-25).' } } }),
   L({ name: 'reddit_subreddit_new', description: 'Newest posts of a subreddit.', kind: 'list', itemType: 'redditPost', baseUrl: 'https://www.reddit.com', path: '/r/{subreddit}/new.json', wrap: 'children', params: { limit: { type: 'number', default: 5, description: 'How many posts (1-25).' } } }),
@@ -1858,6 +1913,7 @@ export const catalog: ToolSpec[] = [
   L({ name: 'gitlab_project_merge_requests', description: 'Merge requests of a GitLab project.', kind: 'list', itemType: 'gitlabMr', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}/merge_requests', params: { state: { type: 'string', enum: ['opened', 'closed', 'merged', 'all'], description: 'Merge request state.' }, limit: { type: 'number', default: 5, description: 'How many merge requests (1-50).' } } }),
   L({ name: 'gitlab_project_commits', description: 'Recent commits of a GitLab project.', kind: 'list', itemType: 'gitlabCommit', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}/repository/commits', params: { limit: { type: 'number', default: 5, description: 'How many commits (1-50).' } } }),
   L({ name: 'gitlab_project_branches', description: 'Branches of a GitLab project.', kind: 'list', itemType: 'gitlabBranch', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}/repository/branches', params: { limit: { type: 'number', default: 5, description: 'How many branches (1-50).' } } }),
+  L({ name: 'gitlab_project_tags', description: 'Tags of a GitLab project.', kind: 'list', itemType: 'gitlabTag', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}/repository/tags', params: { limit: { type: 'number', default: 5, description: 'How many tags (1-50).' } } }),
   // Gitee
   L({ name: 'gitee_search', description: 'Search repositories on Gitee (Chinese developer platform).', kind: 'list', itemType: 'giteeRepo', baseUrl: 'https://gitee.com/api/v5', path: '/search/repositories', params: { q: { type: 'string', required: true, description: 'Search query.' }, per_page: { type: 'number', default: 5, description: 'How many repositories (1-50).' } } }),
   L({ name: 'gitee_repo', description: 'Details of a Gitee repository.', kind: 'object', itemType: 'giteeRepoDetail', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}' }),
@@ -1865,6 +1921,7 @@ export const catalog: ToolSpec[] = [
   L({ name: 'gitee_repo_releases', description: 'Releases of a Gitee repository.', kind: 'list', itemType: 'giteeRelease', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}/releases', params: { per_page: { type: 'number', default: 5, description: 'How many releases (1-50).' } } }),
   L({ name: 'gitee_repo_issues', description: 'Issues of a Gitee repository.', kind: 'list', itemType: 'giteeIssue', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}/issues', params: { state: { type: 'string', enum: ['open', 'closed', 'all'], description: 'Issue state.' }, per_page: { type: 'number', default: 5, description: 'How many issues (1-50).' } } }),
   L({ name: 'gitee_repo_commits', description: 'Recent commits of a Gitee repository.', kind: 'list', itemType: 'giteeCommit', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}/commits', params: { per_page: { type: 'number', default: 5, description: 'How many commits (1-50).' } } }),
+  L({ name: 'gitee_repo_contributors', description: 'Contributors of a Gitee repository by commit count.', kind: 'list', itemType: 'giteeContributor', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}/contributors', params: { per_page: { type: 'number', default: 5, description: 'How many contributors (1-50).' } } }),
   // GitHub: comments, deployments, pages, stats, content
   L({ name: 'github_repo_commit_comment', description: 'A single commit comment by id.', kind: 'object', itemType: 'comment', path: '/repos/{owner}/{repo}/comments/{commentId}' }),
   L({ name: 'github_repo_issue_comment', description: 'A single issue comment by id.', kind: 'object', itemType: 'comment', path: '/repos/{owner}/{repo}/issues/comments/{commentId}' }),
