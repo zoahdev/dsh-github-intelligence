@@ -6,7 +6,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**The most comprehensive developer-intelligence integration for DeepSeek Harness: 170+ read-only tools across 11 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, and Reddit. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
+**The most comprehensive developer-intelligence integration for DeepSeek Harness: 185+ read-only tools across 12 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, and dev.to. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
 
 > Topic: [`dsh-plugin`](https://github.com/topics/dsh-plugin) · Tested with `dsh` 0.1.0-rc.6 · Node 24 / pnpm 11
 
@@ -56,15 +56,15 @@ All values are optional and set in `cordis.yml`:
 | `defaultLimit` | number | `5` | Default result count when the model omits `limit`. |
 | `bodyPreviewChars` | number | `500` | Maximum characters kept from a release body preview. |
 | `cacheTtlMs` | number | `60000` | In-memory response cache TTL, so composed calls stay cheap. |
-| `userAgent` | string | `dsh-github-intelligence/2.3.0` | User-Agent header sent to the GitHub API. |
+| `userAgent` | string | `dsh-github-intelligence/2.4.0` | User-Agent header sent to the GitHub API. |
 
 ## Why "most complete"
 
-- **Breadth**: 170+ tools across 11 external developer ecosystems plus the dsh registry — not just one endpoint.
+- **Breadth**: 185+ tools across 12 external developer ecosystems plus the dsh registry — not just one endpoint.
 - **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_help` makes the catalog self-discoverable.
 - **Rate-limit friendly**: every endpoint is wrapped in a short TTL cache; the deep report reuses cached sub-calls (4 HTTP requests, not 4+ per repetition).
 - **Correctness**: issues are filtered to exclude pull requests; every request honors `exec.signal`; anonymous rate limits and 429s produce actionable errors.
-- **Verified**: 35 tests, plus a real-network smoke for every v2.3.0 tool, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
+- **Verified**: 39 tests, plus a real-network smoke for every v2.3.0 + v2.4.0 tool (27 tools), CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
 
 > ⭐ If this helps your agent, a star helps the ecosystem find it. Feedback and issues are equally welcome.
 
@@ -73,6 +73,16 @@ All values are optional and set in `cordis.yml`:
 - Plain list tools: `github_repo_releases`, `github_repo_issues` (pull requests filtered out), `github_repo_pulls`.
 - People & social: `github_user_repositories`, `github_user_social_accounts`, `github_repo_contributors`, `github_repo_subscribers`, `github_repo_collaborators` (with effective permission, requires push access).
 - Git, security & search: `github_repo_git_refs` (matching refs), `github_repo_punch_card`, `github_repo_security_advisories`, `github_search_repositories`.
+
+## What's new in v2.4.0
+
+- GitLab project depth: `gitlab_project_issues`, `gitlab_project_merge_requests`, `gitlab_project_commits`, `gitlab_project_branches`.
+- Gitee depth: `gitee_repo_releases`, `gitee_repo_issues`, `gitee_repo_commits`.
+- Stack Overflow: `so_question_answers`, `so_top_tags` — and the existing SO tools now send the required `site` param (real-API fix).
+- Reddit: `reddit_subreddit_rising`, `reddit_subreddit_controversial` (Reddit may block cloud IPs; works from residential networks).
+- New ecosystem dev.to: `devto_articles`, `devto_article`, `devto_user`.
+- npm: `npm_package_dependencies` (direct deps of the latest version).
+- Correctness fix: `limit` is now enforced locally — GitHub/GitLab/StackExchange ignore the query param and previously returned their full default page.
 
 ## Development
 
@@ -121,7 +131,7 @@ MIT © 2026 zoahdev
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：170+ 只读工具，横跨 11 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
+**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：185+ 只读工具，横跨 12 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit、dev.to）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
 
 > 话题：[`dsh-plugin`](https://github.com/topics/dsh-plugin) · 已在 `dsh` 0.1.0-rc.6 / Node 24 / pnpm 11 实测
 
@@ -159,11 +169,11 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 
 ## 为什么说"最完整"
 
-- **覆盖面**：170+ 工具、11 大外部生态 + dsh 注册表，不是单点工具；
+- **覆盖面**：185+ 工具、12 大外部生态 + dsh 注册表，不是单点工具；
 - **深度**：`github_repo_report` 一次回答"这个仓库到底怎么样"；`github_help` 让目录自发现；
 - **省配额**：所有接口带短 TTL 缓存，深度报告复用缓存子调用，一次只发 4 个请求；
 - **正确性**：Issue 自动排除 PR、全部请求支持取消、匿名限流/429 有明确提示；
-- **验证**：35 个测试 + v2.3.0 全部新工具真实网络冒烟 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
+- **验证**：39 个测试 + v2.3.0/v2.4.0 全部 27 个新工具真实网络冒烟 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
 
 > ⭐ 如果它帮到了你的 agent，一个 star 就能让整个生态更容易发现它。反馈和 issue 同样欢迎。
 
@@ -172,6 +182,16 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 - 平铺列表工具：`github_repo_releases`、`github_repo_issues`（自动排除 PR）、`github_repo_pulls`；
 - 人与社交：`github_user_repositories`、`github_user_social_accounts`、`github_repo_contributors`、`github_repo_subscribers`、`github_repo_collaborators`（含实际权限，需 push 权限 token）；
 - Git、安全与搜索：`github_repo_git_refs`（ref 前缀匹配）、`github_repo_punch_card`、`github_repo_security_advisories`、`github_search_repositories`。
+
+## v2.4.0 新增
+
+- GitLab 深度：`gitlab_project_issues`、`gitlab_project_merge_requests`、`gitlab_project_commits`、`gitlab_project_branches`；
+- Gitee 深度：`gitee_repo_releases`、`gitee_repo_issues`、`gitee_repo_commits`；
+- Stack Overflow：`so_question_answers`、`so_top_tags`；并修复既有 SO 工具缺 `site` 参数的真实 API 问题；
+- Reddit：`reddit_subreddit_rising`、`reddit_subreddit_controversial`（Reddit 可能屏蔽云 IP，家庭网络可用）；
+- 新生态 dev.to：`devto_articles`、`devto_article`、`devto_user`；
+- npm：`npm_package_dependencies`（最新版直接依赖）；
+- 正确性修复：`limit` 现在本地强制生效——GitHub/GitLab/StackExchange 会忽略该查询参数，之前会返回整页默认数量。
 
 ## 开发
 
