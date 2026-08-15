@@ -54,7 +54,7 @@ export const Config: Schema<Config> = Schema.object({
   defaultLimit: Schema.number().default(5),
   bodyPreviewChars: Schema.number().default(500),
   cacheTtlMs: Schema.number().default(60_000),
-  userAgent: Schema.string().default('dsh-github-intelligence/2.6.0'),
+  userAgent: Schema.string().default('dsh-github-intelligence/2.7.0'),
 })
 
 function assertPositiveInteger(name: string, value: number): void {
@@ -75,7 +75,7 @@ function clampLimit(value: number): number {
 
 function clientOptions(config: Config): GitHubClientOptions {
   const options: GitHubClientOptions = {
-    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.6.0',
+    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.7.0',
     timeoutMs: config.timeoutMs ?? 10_000,
     bodyPreviewChars: config.bodyPreviewChars ?? 500,
     cacheTtlMs: config.cacheTtlMs ?? 60_000,
@@ -126,6 +126,32 @@ function renderUserRepos(value: { username: string; repos: GitHubRepoHit[] }): s
   return `Top repositories of ${value.username}:\n` + value.repos.map((item, index) => {
     return `${index + 1}. ${item.fullName} (★${item.stars}) — ${item.description ?? 'no description'} ${item.htmlUrl}`
   }).join('\n')
+}
+
+function renderWeeklyDigest(value: {
+  owner: string
+  repo: string
+  since: string
+  releases: Array<{ tagName: string; publishedAt: string | null; htmlUrl: string }>
+  mergedPulls: Array<{ number: number; title: string; mergedAt: string | null; htmlUrl: string }>
+  newIssues: Array<{ number: number; title: string; createdAt: string | null; htmlUrl: string }>
+  commits: Array<{ sha: string; message: string; author: string | null; date: string | null; htmlUrl: string }>
+}): string {
+  const lines = [`# ${value.owner}/${value.repo} — weekly digest (since ${value.since})`]
+  if (value.releases.length > 0) {
+    lines.push('', '## Releases', ...value.releases.map((r) => `- ${r.tagName} (${r.publishedAt?.slice(0, 10) ?? '?'}) ${r.htmlUrl}`))
+  }
+  if (value.mergedPulls.length > 0) {
+    lines.push('', '## Merged pull requests', ...value.mergedPulls.map((p) => `- #${p.number} ${p.title} ${p.htmlUrl}`))
+  }
+  if (value.newIssues.length > 0) {
+    lines.push('', '## New issues', ...value.newIssues.map((i) => `- #${i.number} ${i.title} ${i.htmlUrl}`))
+  }
+  if (value.commits.length > 0) {
+    lines.push('', '## Commits', ...value.commits.map((c) => `- ${c.sha.slice(0, 7)} ${c.message.split('\n')[0]} (${c.author ?? '?'}, ${c.date?.slice(0, 10) ?? '?'})`))
+  }
+  if (lines.length === 1) lines.push('No releases, merged PRs, new issues, or commits in this window.')
+  return lines.join('\n')
 }
 
 function renderCompare(value: {
@@ -778,7 +804,85 @@ export function defineTools(config: Config) {
     presentCall: (args) => ({ card: 'generic', title: `GitHub repos: ${args.username}`, kind: 'search', rawInput: args }),
   })
 
-  return [repo, releases, search, issues, pulls, contributors, report, compare, trending, userRepos] as const
+  const weeklyDigest = defineTool({
+    name: 'github_weekly_digest',
+    description:
+      'A one-week digest of a repository: releases, merged pull requests, new issues, and commits from the last N days (default 7). '
+      + 'Use it for "what happened this week in owner/repo" questions.',
+    parameters: {
+      owner: { type: 'string', required: true, description: 'Repository owner.' },
+      repo: { type: 'string', required: true, description: 'Repository name.' },
+      days: { type: 'number', description: 'Look-back window in days (1-30). Defaults to 7.' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          owner: { type: 'string', required: true },
+          repo: { type: 'string', required: true },
+          since: { type: 'string', required: true },
+          releases: {
+            type: 'array', required: true,
+            items: { type: 'object', additionalProperties: false, properties: {
+              tagName: { type: 'string', required: true }, publishedAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true }, htmlUrl: { type: 'string', required: true },
+            } },
+          },
+          mergedPulls: {
+            type: 'array', required: true,
+            items: { type: 'object', additionalProperties: false, properties: {
+              number: { type: 'integer', required: true }, title: { type: 'string', required: true }, mergedAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true }, htmlUrl: { type: 'string', required: true },
+            } },
+          },
+          newIssues: {
+            type: 'array', required: true,
+            items: { type: 'object', additionalProperties: false, properties: {
+              number: { type: 'integer', required: true }, title: { type: 'string', required: true }, createdAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true }, htmlUrl: { type: 'string', required: true },
+            } },
+          },
+          commits: {
+            type: 'array', required: true,
+            items: { type: 'object', additionalProperties: false, properties: {
+              sha: { type: 'string', required: true }, message: { type: 'string', required: true }, author: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true }, date: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true }, htmlUrl: { type: 'string', required: true },
+            } },
+          },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: renderWeeklyDigest(value) }],
+    },
+    async execute(args, exec) {
+      assertOwnerRepo(args.owner, args.repo)
+      const days = Math.min(Math.max(Math.trunc(args.days ?? 7), 1), 30)
+      const since = Date.now() - days * 86_400_000
+      // A repo may legitimately 404 on individual endpoints (e.g. GitHub
+      // repositories with pull requests disabled). Tolerate those so one
+      // missing surface does not kill the whole digest; other errors (auth,
+      // rate limits, timeouts) still propagate.
+      const tolerateMissing = <T>(promise: Promise<T>): Promise<T | []> => promise.catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error)
+        if (/not found|404/i.test(message)) return []
+        throw error
+      })
+      const [releases, pulls, issues, commits] = await Promise.all([
+        tolerateMissing(client.listReleases(args.owner, args.repo, 30, exec.signal)),
+        tolerateMissing(client.listPulls(args.owner, args.repo, 'closed', 30, exec.signal)),
+        tolerateMissing(client.listIssues(args.owner, args.repo, 'open', 30, exec.signal)),
+        tolerateMissing(client.recentCommits(args.owner, args.repo, 30, exec.signal)),
+      ])
+      return {
+        owner: args.owner,
+        repo: args.repo,
+        since: new Date(since).toISOString().slice(0, 10),
+        releases: releases.filter((r) => r.publishedAt !== null && Date.parse(r.publishedAt) >= since),
+        mergedPulls: pulls.filter((p) => p.mergedAt !== null && Date.parse(p.mergedAt) >= since),
+        newIssues: issues.filter((i) => i.createdAt !== null && Date.parse(i.createdAt) >= since),
+        commits: commits.filter((c) => c.date !== null && Date.parse(c.date) >= since),
+      }
+    },
+    presentCall: (args) => ({ card: 'generic', title: `Weekly digest: ${args.owner}/${args.repo}`, kind: 'search', rawInput: args }),
+  })
+
+  return [repo, releases, search, issues, pulls, contributors, report, compare, trending, userRepos, weeklyDigest] as const
 }
 
 /**
@@ -808,5 +912,5 @@ export function apply(ctx: Context, config: Config): void {
       : githubFetcher
     ctx.tools.register(buildCatalogTool(fetcher, spec))
   }
-  ctx.tools.register(buildHelpTool(catalog.length + 10))
+  ctx.tools.register(buildHelpTool(catalog.length + 11))
 }
