@@ -56,15 +56,15 @@ All values are optional and set in `cordis.yml`:
 | `defaultLimit` | number | `5` | Default result count when the model omits `limit`. |
 | `bodyPreviewChars` | number | `500` | Maximum characters kept from a release body preview. |
 | `cacheTtlMs` | number | `60000` | In-memory response cache TTL, so composed calls stay cheap. |
-| `userAgent` | string | `dsh-github-intelligence/2.6.0` | User-Agent header sent to the GitHub API. |
+| `userAgent` | string | `dsh-github-intelligence/2.7.0` | User-Agent header sent to the GitHub API. |
 
 ## Why "most complete"
 
 - **Breadth**: 195+ tools across 15 external developer ecosystems plus the dsh registry — not just one endpoint.
-- **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_help` makes the catalog self-discoverable.
+- **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_weekly_digest` answers "what happened this week"; `github_help` makes the catalog self-discoverable.
 - **Rate-limit friendly**: every endpoint is wrapped in a short TTL cache; the deep report reuses cached sub-calls (4 HTTP requests, not 4+ per repetition).
 - **Correctness**: issues are filtered to exclude pull requests; every request honors `exec.signal`; anonymous rate limits and 429s produce actionable errors.
-- **Verified**: 41 tests, plus a real-network smoke for every v2.3.0..v2.6.0 tool (35 tools), CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
+- **Verified**: 43 tests, plus a real-network smoke for every v2.3.0..v2.6.0 tool (35 tools) and a live `github_weekly_digest` run, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
 
 > ⭐ If this helps your agent, a star helps the ecosystem find it. Feedback and issues are equally welcome.
 
@@ -94,6 +94,10 @@ All values are optional and set in `cordis.yml`:
 - New ecosystem: the official Go module proxy (`go_module_latest`).
 - More depth: `crates_crate_versions` (per-version downloads + yank status), `gitee_repo_contributors`, `gitlab_project_tags`, `so_related_tags`.
 - Also probed and rejected: Maven Central (`search.maven.org` timed out repeatedly) and Hugging Face `/api/tags` (now 401) — not shipped because they would fail in real use.
+
+## What's new in v2.7.0
+
+- New flagship composite tool: `github_weekly_digest` — one call answers "what happened this week in owner/repo" (releases + merged PRs + new issues + commits, filtered to a configurable look-back window).
 
 ## Development
 
@@ -182,9 +186,10 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 
 - **覆盖面**：195+ 工具、15 大外部生态 + dsh 注册表，不是单点工具；
 - **深度**：`github_repo_report` 一次回答"这个仓库到底怎么样"；`github_help` 让目录自发现；
+- **周报**：`github_weekly_digest` 一次回答"这个仓库这周发生了什么"；
 - **省配额**：所有接口带短 TTL 缓存，深度报告复用缓存子调用，一次只发 4 个请求；
 - **正确性**：Issue 自动排除 PR、全部请求支持取消、匿名限流/429 有明确提示；
-- **验证**：41 个测试 + v2.3.0..v2.6.0 全部 35 个新工具真实网络冒烟 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
+- **验证**：43 个测试 + v2.3.0..v2.6.0 全部 35 个新工具真实网络冒烟 + `github_weekly_digest` 真实运行 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
 
 > ⭐ 如果它帮到了你的 agent，一个 star 就能让整个生态更容易发现它。反馈和 issue 同样欢迎。
 
@@ -214,6 +219,10 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 - 新生态：官方 Go module proxy（`go_module_latest`）；
 - 深度补强：`crates_crate_versions`（各版本下载量 + yank 状态）、`gitee_repo_contributors`、`gitlab_project_tags`、`so_related_tags`；
 - 同样探测后拒绝：Maven Central（search.maven.org 反复超时）与 Hugging Face `/api/tags`（现在 401）——真实使用会挂，所以不收录。
+
+## v2.7.0 新增
+
+- 新旗舰复合工具：`github_weekly_digest`——一次调用回答"owner/repo 这周发生了什么"（release + 合并 PR + 新 issue + 提交，可按天配置窗口）。
 
 ## 开发
 
