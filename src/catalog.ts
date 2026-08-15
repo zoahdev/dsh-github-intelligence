@@ -588,6 +588,30 @@ const parsers: Record<string, (raw: unknown, name?: unknown) => unknown> = {
       permalink: s(r.permalink) !== null ? `https://www.reddit.com${r.permalink}` : '',
     }
   },
+  gitlabProject(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      id: n(r.id),
+      name: s(r.name) ?? '',
+      nameWithNamespace: s(r.path_with_namespace) ?? s(r.name_with_namespace) ?? '',
+      description: s(r.description),
+      stars: n(r.star_count),
+      forks: n(r.forks_count),
+      lastActivityAt: d(r.last_activity_at),
+      webUrl: s(r.web_url) ?? '',
+    }
+  },
+  giteeRepo(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      fullName: s(r.full_name) ?? '',
+      description: s(r.description),
+      stars: n(r.stargazers_count),
+      forks: n(r.forks_count),
+      language: s(r.language),
+      htmlUrl: s(r.html_url) ?? '',
+    }
+  },
 }
 
 function parseItem(type: string, raw: unknown, key?: string): unknown {
@@ -832,6 +856,34 @@ const objectParsers: Record<string, (raw: unknown) => unknown> = {
       downloads: n(r.downloads),
     }
   },
+  gitlabProjectDetail(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      id: n(r.id),
+      name: s(r.name) ?? '',
+      description: s(r.description),
+      stars: n(r.star_count),
+      forks: n(r.forks_count),
+      webUrl: s(r.web_url) ?? '',
+      defaultBranch: s(r.default_branch),
+      visibility: s(r.visibility),
+      createdAt: d(r.created_at),
+      lastActivityAt: d(r.last_activity_at),
+    }
+  },
+  giteeRepoDetail(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      fullName: s(r.full_name) ?? '',
+      description: s(r.description),
+      stars: n(r.stargazers_count),
+      forks: n(r.forks_count),
+      language: s(r.language),
+      license: s((r.license as Record<string, unknown> | null)?.name ?? r.license),
+      htmlUrl: s(r.html_url) ?? '',
+      updatedAt: d(r.updated_at),
+    }
+  },
 }
 
 function parseObject(type: string, raw: unknown): unknown {
@@ -1011,6 +1063,12 @@ const itemSchemas: Record<string, object> = {
   redditPost: { type: 'object', additionalProperties: false, properties: {
     title: strSchema(), subreddit: strSchema(), score: intSchema(), numComments: intSchema(), author: strSchema(), created: nullableStr(), url: strSchema(), permalink: strSchema(),
   } },
+  gitlabProject: { type: 'object', additionalProperties: false, properties: {
+    id: intSchema(), name: strSchema(), nameWithNamespace: strSchema(), description: nullableStr(), stars: intSchema(), forks: intSchema(), lastActivityAt: nullableStr(), webUrl: strSchema(),
+  } },
+  giteeRepo: { type: 'object', additionalProperties: false, properties: {
+    fullName: strSchema(), description: nullableStr(), stars: intSchema(), forks: intSchema(), language: nullableStr(), htmlUrl: strSchema(),
+  } },
 }
 
 const objectSchemas: Record<string, object> = {
@@ -1081,6 +1139,12 @@ const objectSchemas: Record<string, object> = {
   npmDownloads: { type: 'object', additionalProperties: false, properties: {
     package: strSchema(), start: strSchema(), end: strSchema(), downloads: intSchema(),
   } },
+  gitlabProjectDetail: { type: 'object', additionalProperties: false, properties: {
+    id: intSchema(), name: strSchema(), description: nullableStr(), stars: intSchema(), forks: intSchema(), webUrl: strSchema(), defaultBranch: nullableStr(), visibility: nullableStr(), createdAt: nullableStr(), lastActivityAt: nullableStr(),
+  } },
+  giteeRepoDetail: { type: 'object', additionalProperties: false, properties: {
+    fullName: strSchema(), description: nullableStr(), stars: intSchema(), forks: intSchema(), language: nullableStr(), license: nullableStr(), htmlUrl: strSchema(), updatedAt: nullableStr(),
+  } },
 }
 
 /* ------------------------------------------------------------------ */
@@ -1138,6 +1202,8 @@ const formatters: Record<string, (item: Record<string, unknown>) => string> = {
   hnUser: (i) => `${i.id} (karma ${i.karma}, since ${i.created ?? '?'})`,
   soQuestion: (i) => `#${i.questionId} ${i.title} (${i.score} votes, ${i.answerCount} answers${i.isAnswered ? ', answered' : ''}) [${(i.tags as string[]).join(', ')}] ${i.link}`,
   redditPost: (i) => `r/${i.subreddit}: ${i.title} (${i.score} pts, ${i.numComments} comments, u/${i.author}) ${i.permalink || i.url}`,
+  gitlabProject: (i) => `${i.nameWithNamespace || i.name} (★${i.stars}, ${i.forks} forks) — ${i.description ?? ''} ${i.webUrl}`,
+  giteeRepo: (i) => `${i.fullName} (★${i.stars}, ${i.forks} forks, ${i.language ?? 'n/a'}) — ${i.description ?? ''} ${i.htmlUrl}`,
 }
 
 function formatItem(type: string, item: unknown): string {
@@ -1169,6 +1235,8 @@ const objectFormatters: Record<string, (item: Record<string, unknown>) => string
   redditAbout: (i) => `r/${i.subreddit} — ${i.subscribers} subscribers, ${i.activeUsers} active · ${i.description ?? ''} · created ${i.created ?? '?'}`,
   dshEcosystemStats: (i) => `${i.pluginCount} plugins tracked by ${i.source}`,
   npmDownloads: (i) => `${i.package}: ${i.downloads} downloads (${i.start} → ${i.end})`,
+  gitlabProjectDetail: (i) => `${i.name} (★${i.stars}, ${i.forks} forks, ${i.visibility ?? '?'}) — ${i.description ?? ''}\n${i.webUrl}`,
+  giteeRepoDetail: (i) => `${i.fullName} (★${i.stars}, ${i.forks} forks, ${i.language ?? 'n/a'}, ${i.license ?? 'n/a'}) — ${i.description ?? ''}\n${i.htmlUrl}`,
 }
 
 function formatObject(type: string, item: unknown): string {
@@ -1329,6 +1397,14 @@ export const catalog: ToolSpec[] = [
   L({ name: 'reddit_search', description: 'Search Reddit posts across all subreddits.', kind: 'list', itemType: 'redditPost', baseUrl: 'https://www.reddit.com', path: '/search.json', wrap: 'children', params: { q: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', default: 5, description: 'How many posts (1-25).' } } }),
   // dsh ecosystem itself
   L({ name: 'dsh_ecosystem_stats', description: 'Current number of plugins tracked by the awesome-dsh-plugin registry.', kind: 'object', itemType: 'dshEcosystemStats', baseUrl: 'https://awesome-dsh-plugin.com', path: '/count.json' }),
+  // GitLab
+  L({ name: 'gitlab_search', description: 'Search projects on GitLab.com.', kind: 'list', itemType: 'gitlabProject', baseUrl: 'https://gitlab.com/api/v4', path: '/projects', params: { q: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', default: 5, description: 'How many projects (1-50).' } } }),
+  L({ name: 'gitlab_project', description: 'Details of a GitLab project by numeric id.', kind: 'object', itemType: 'gitlabProjectDetail', baseUrl: 'https://gitlab.com/api/v4', path: '/projects/{projectId}' }),
+  L({ name: 'gitlab_group_projects', description: 'Projects of a GitLab group.', kind: 'list', itemType: 'gitlabProject', baseUrl: 'https://gitlab.com/api/v4', path: '/groups/{group}/projects', params: { limit: { type: 'number', default: 5, description: 'How many projects (1-50).' } } }),
+  // Gitee
+  L({ name: 'gitee_search', description: 'Search repositories on Gitee (Chinese developer platform).', kind: 'list', itemType: 'giteeRepo', baseUrl: 'https://gitee.com/api/v5', path: '/search/repositories', params: { q: { type: 'string', required: true, description: 'Search query.' }, per_page: { type: 'number', default: 5, description: 'How many repositories (1-50).' } } }),
+  L({ name: 'gitee_repo', description: 'Details of a Gitee repository.', kind: 'object', itemType: 'giteeRepoDetail', baseUrl: 'https://gitee.com/api/v5', path: '/repos/{owner}/{repo}' }),
+  L({ name: 'gitee_user_repos', description: 'Repositories of a Gitee user.', kind: 'list', itemType: 'giteeRepo', baseUrl: 'https://gitee.com/api/v5', path: '/users/{username}/repos', params: { per_page: { type: 'number', default: 5, description: 'How many repositories (1-50).' } } }),
 ]
 
 /* ------------------------------------------------------------------ */
@@ -1577,8 +1653,9 @@ export function buildHelpTool(count: number) {
   return defineTool({
     name: 'github_help',
     description:
-      `List the ${count} available github_* tools with one-line descriptions. Call this first when the `
-      + 'user asks about GitHub and you are unsure which tool to use.',
+      `List the ${count} available tools (github_*, npm_*, pypi_*, crates_*, docker_*, hf_*, hn_*, so_*, `
+      + `reddit_*, gitlab_*, gitee_*) with one-line descriptions. Call this first when the user asks `
+      + 'about any developer platform and you are unsure which tool to use.',
     parameters: {},
     output: {
       schema: {
