@@ -16,7 +16,7 @@ Result: `tsc -p tsconfig.json` exits 0, emits `lib/` with `index.js`, `github.js
 pnpm test
 ```
 
-Result: 3 test files, 43 tests, all passed. Coverage includes extended repo parsing, issue/PR filtering, contributors, commits, TTL caching, rate-limit/404 errors, registration of 195+ tools, the deep report + weekly digest (including 404 tolerance for PR-disabled repositories), catalog completeness (unique names, 100+ tool floor), generated-tool execution (GitHub lists, npm search unwrapping, Hacker News item resolution, ecosystem stats, GitLab/Gitee, file content, the v2.3.0..v2.6.0 tool sets, local limit enforcement, SO site param), and input validation.
+Result: 3 test files, 44 tests, all passed. Coverage includes extended repo parsing, issue/PR filtering, contributors, commits, TTL caching, rate-limit/404 errors, registration of 195+ tools, the deep report + weekly digest (including 404 tolerance for PR-disabled repositories), catalog completeness (unique names, 100+ tool floor), generated-tool execution (GitHub lists, npm search unwrapping, Hacker News item resolution, ecosystem stats, GitLab/Gitee, file content, the v2.3.0..v2.8.0 tool sets, local limit enforcement, SO site param), and input validation.
 
 In addition, every v2.3.0 tool passed a real-network smoke against the public GitHub API (scripts/v230-network-smoke.mjs): `github_user_repositories`, `github_user_social_accounts`, `github_repo_releases`, `github_repo_issues`, `github_repo_pulls`, `github_repo_contributors`, `github_repo_subscribers`, `github_repo_collaborators`, `github_repo_git_refs`, `github_repo_punch_card` (168 punches), `github_repo_security_advisories`, and `github_search_repositories`.
 
@@ -27,6 +27,8 @@ The v2.5.0 smoke (scripts/v250-network-smoke.mjs) extends that to 30 tools: `rub
 The v2.6.0 smoke (scripts/v260-network-smoke.mjs) extends that to 35 tools: `crates_crate_versions` against crates.io, `gitee_repo_contributors`, `gitlab_project_tags`, and `so_related_tags` all passed against real APIs. `go_module_latest` was verified against the official Go module proxy via a urllib probe (response `{Version, Time}`), but Node fetch from this network intermittently cannot reach proxy.golang.org, so it is reported as SKIP here. Maven Central (repeated timeouts) and Hugging Face `/api/tags` (401) were probed and rejected.
 
 The v2.7.0 `github_weekly_digest` was executed against the real GitHub API on `deepseek-ai/deepseek-harness` (14-day window): 30 commits returned, releases/issues/pulls surfaces tolerated (the repository has pull requests and issues disabled). A unit test covers the 404-tolerance path.
+
+The v2.8.0 smoke (scripts/v280-network-smoke.mjs) extends that to 37 tools: `npm_downloads_last_day` and `npm_downloads_range` passed against the real npm downloads API (lodash, 8 daily points). Stack Exchange `/search/answers` (HTTP 400), the crates.io dependencies endpoint (unreachable from this network), and dev.to podcast episodes (unreachable) were probed and rejected.
 
 ## 3. Package and install into a dsh profile
 
