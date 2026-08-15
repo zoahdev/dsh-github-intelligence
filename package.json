@@ -1,7 +1,7 @@
 {
   "name": "dsh-github-intelligence",
-  "version": "1.0.0",
-  "description": "The most complete GitHub integration for DeepSeek Harness: repo overview, releases, issues, pull requests, contributors, search, and a deep repo report — with rate-limit-friendly caching.",
+  "version": "2.0.0",
+  "description": "The most comprehensive developer-intelligence integration for DeepSeek Harness: 140+ read-only tools across GitHub, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, and Reddit — with rate-limit-friendly caching.",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
