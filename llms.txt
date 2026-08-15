@@ -1,0 +1,23 @@
+# dsh-github-intelligence
+
+> The most comprehensive developer-intelligence integration for DeepSeek Harness: 185+ read-only model tools across 12 external ecosystems (GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, dev.to) plus the dsh registry itself. No API key required; rate-limit-friendly TTL caching; cancellation; UI cards.
+
+## Key facts
+
+- Install: `dsh plugin --profile web add <tarball>` (see GitHub Releases) or `github:zoahdev/dsh-github-intelligence`
+- Tools: `github_repo_report`, `github_help`, `github_repo`, `github_releases`, `github_search`, `github_issues`, `github_pulls`, `github_contributors`, `github_compare`, `github_trending`, `github_user_repos`, plus 170+ generated `github_*`, `gitlab_*`, `gitee_*`, `npm_*`, `pypi_*`, `crates_*`, `docker_*`, `hf_*`, `hn_*`, `so_*`, `reddit_*`, `devto_*` tools
+- Config: `githubToken`, `timeoutMs`, `defaultLimit`, `bodyPreviewChars`, `cacheTtlMs`, `userAgent`
+- Verification: 39 unit tests; real-network smoke for every new tool (v2.4.0: 27 tools); CI installs the bundle into a fresh dsh profile and boots `dsh web`
+
+## Key files
+
+- src/catalog.ts — declarative tool catalog (specs, parsers, schemas, renderers)
+- src/github.ts — GitHub REST client with TTL cache
+- src/ecosystems.ts — generic multi-ecosystem JSON client
+- src/index.ts — plugin entry, flagship tools, registration
+- README.md — full EN/ZH documentation
+
+## Community
+
+- Showcase: https://github.com/deepseek-ai/deepseek-harness/discussions/1657
+- RFC #1629 context: https://github.com/deepseek-ai/deepseek-harness/discussions/1629
