@@ -6,7 +6,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**The most comprehensive developer-intelligence integration for DeepSeek Harness: 190+ read-only tools across 14 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, dev.to, RubyGems, and NuGet. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
+**The most comprehensive developer-intelligence integration for DeepSeek Harness: 195+ read-only tools across 15 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, dev.to, RubyGems, NuGet, and the Go module proxy. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
 
 > Topic: [`dsh-plugin`](https://github.com/topics/dsh-plugin) · Tested with `dsh` 0.1.0-rc.6 · Node 24 / pnpm 11
 
@@ -56,15 +56,15 @@ All values are optional and set in `cordis.yml`:
 | `defaultLimit` | number | `5` | Default result count when the model omits `limit`. |
 | `bodyPreviewChars` | number | `500` | Maximum characters kept from a release body preview. |
 | `cacheTtlMs` | number | `60000` | In-memory response cache TTL, so composed calls stay cheap. |
-| `userAgent` | string | `dsh-github-intelligence/2.5.0` | User-Agent header sent to the GitHub API. |
+| `userAgent` | string | `dsh-github-intelligence/2.6.0` | User-Agent header sent to the GitHub API. |
 
 ## Why "most complete"
 
-- **Breadth**: 190+ tools across 14 external developer ecosystems plus the dsh registry — not just one endpoint.
+- **Breadth**: 195+ tools across 15 external developer ecosystems plus the dsh registry — not just one endpoint.
 - **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_help` makes the catalog self-discoverable.
 - **Rate-limit friendly**: every endpoint is wrapped in a short TTL cache; the deep report reuses cached sub-calls (4 HTTP requests, not 4+ per repetition).
 - **Correctness**: issues are filtered to exclude pull requests; every request honors `exec.signal`; anonymous rate limits and 429s produce actionable errors.
-- **Verified**: 40 tests, plus a real-network smoke for every v2.3.0 + v2.4.0 + v2.5.0 tool (30 tools), CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
+- **Verified**: 41 tests, plus a real-network smoke for every v2.3.0..v2.6.0 tool (35 tools), CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
 
 > ⭐ If this helps your agent, a star helps the ecosystem find it. Feedback and issues are equally welcome.
 
@@ -88,6 +88,12 @@ All values are optional and set in `cordis.yml`:
 
 - Two new ecosystems: RubyGems (`rubygems_search`, `rubygems_gem`) and NuGet (`nuget_search`).
 - Bitbucket was probed and deliberately NOT shipped: the public Cloud API now returns 404/410 for anonymous access — an "it's documented as public" trap caught by real-API verification.
+
+## What's new in v2.6.0
+
+- New ecosystem: the official Go module proxy (`go_module_latest`).
+- More depth: `crates_crate_versions` (per-version downloads + yank status), `gitee_repo_contributors`, `gitlab_project_tags`, `so_related_tags`.
+- Also probed and rejected: Maven Central (`search.maven.org` timed out repeatedly) and Hugging Face `/api/tags` (now 401) — not shipped because they would fail in real use.
 
 ## Development
 
@@ -136,7 +142,7 @@ MIT © 2026 zoahdev
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：190+ 只读工具，横跨 14 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit、dev.to、RubyGems、NuGet）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
+**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：195+ 只读工具，横跨 15 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit、dev.to、RubyGems、NuGet、Go module proxy）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
 
 > 话题：[`dsh-plugin`](https://github.com/topics/dsh-plugin) · 已在 `dsh` 0.1.0-rc.6 / Node 24 / pnpm 11 实测
 
@@ -174,11 +180,11 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 
 ## 为什么说"最完整"
 
-- **覆盖面**：190+ 工具、14 大外部生态 + dsh 注册表，不是单点工具；
+- **覆盖面**：195+ 工具、15 大外部生态 + dsh 注册表，不是单点工具；
 - **深度**：`github_repo_report` 一次回答"这个仓库到底怎么样"；`github_help` 让目录自发现；
 - **省配额**：所有接口带短 TTL 缓存，深度报告复用缓存子调用，一次只发 4 个请求；
 - **正确性**：Issue 自动排除 PR、全部请求支持取消、匿名限流/429 有明确提示；
-- **验证**：40 个测试 + v2.3.0/v2.4.0/v2.5.0 全部 30 个新工具真实网络冒烟 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
+- **验证**：41 个测试 + v2.3.0..v2.6.0 全部 35 个新工具真实网络冒烟 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
 
 > ⭐ 如果它帮到了你的 agent，一个 star 就能让整个生态更容易发现它。反馈和 issue 同样欢迎。
 
@@ -202,6 +208,12 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 
 - 两个新生态：RubyGems（`rubygems_search`、`rubygems_gem`）与 NuGet（`nuget_search`）；
 - Bitbucket 已探测但**故意不收录**：公共 Cloud API 匿名访问现在返回 404/410——这是"文档写着公开、实际已关"的坑，真实 API 验证拦住了它。
+
+## v2.6.0 新增
+
+- 新生态：官方 Go module proxy（`go_module_latest`）；
+- 深度补强：`crates_crate_versions`（各版本下载量 + yank 状态）、`gitee_repo_contributors`、`gitlab_project_tags`、`so_related_tags`；
+- 同样探测后拒绝：Maven Central（search.maven.org 反复超时）与 Hugging Face `/api/tags`（现在 401）——真实使用会挂，所以不收录。
 
 ## 开发
 
