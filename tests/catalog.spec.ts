@@ -263,6 +263,12 @@ describe('generated tools', () => {
     }
   })
 
+  it('ships the v2.5.0 tool set (rubygems/nuget)', () => {
+    for (const name of ['rubygems_search', 'rubygems_gem', 'nuget_search']) {
+      expect(catalog.some((spec) => spec.name === name), `missing ${name}`).toBe(true)
+    }
+  })
+
   it('parses the v2.4.0 tools from realistic fixtures', async () => {
     const cases: Array<{ name: string; args: Record<string, unknown>; fixture: unknown; expected: Record<string, unknown> }> = [
       {
@@ -339,6 +345,21 @@ describe('generated tools', () => {
         name: 'npm_package_dependencies', args: { package: 'dsh-plugin-doctor' },
         fixture: { name: 'dsh-plugin-doctor', 'dist-tags': { latest: '0.1.0' }, versions: { '0.1.0': { dependencies: { commander: '^14.0.1', semver: '^7.7.2' } } } },
         expected: { item: { package: 'dsh-plugin-doctor', version: '0.1.0', deps: [{ name: 'commander', range: '^14.0.1' }, { name: 'semver', range: '^7.7.2' }] } },
+      },
+      {
+        name: 'rubygems_search', args: { query: 'harness' },
+        fixture: [{ name: 'harness', info: 'a test harness', version: '1.2.3', downloads: 100, homepage_uri: null, source_code_uri: null, project_uri: 'https://rubygems.org/gems/harness', authors: 'u' }],
+        expected: { source: 'query: harness', items: [{ name: 'harness', version: '1.2.3', downloads: 100, authors: 'u' }] },
+      },
+      {
+        name: 'rubygems_gem', args: { gem: 'rails' },
+        fixture: { name: 'rails', info: 'web framework', version: '8.0.0', downloads: 1, homepage_uri: null, source_code_uri: null, documentation_uri: null, project_uri: 'https://rubygems.org/gems/rails', authors: 'dhh', licenses: ['MIT'] },
+        expected: { item: { name: 'rails', version: '8.0.0', authors: 'dhh', licenses: ['MIT'] } },
+      },
+      {
+        name: 'nuget_search', args: { q: 'serilog', take: 3 },
+        fixture: { data: [{ id: 'Serilog', version: '4.0.1', description: 'logging', totalDownloads: 100000, projectUrl: null, authors: ['nblumhardt'], tags: ['logging'] }] },
+        expected: { source: 'query: serilog', items: [{ id: 'Serilog', version: '4.0.1', downloads: 100000, authors: ['nblumhardt'] }] },
       },
     ]
     for (const c of cases) {
