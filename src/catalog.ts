@@ -1486,7 +1486,7 @@ export const catalog: ToolSpec[] = [
   // users
   L({ name: 'github_user', description: 'Public profile of a GitHub user.', kind: 'object', itemType: 'user', path: '/users/{username}' }),
   L({ name: 'github_user_starred', description: 'Repositories a user has starred.', kind: 'list', itemType: 'repoHit', path: '/users/{username}/starred', params: { limit: { type: 'number', description: 'How many repositories (1-50).' } } }),
-  L({ name: 'github_user_repos', description: 'Repositories owned by a user.', kind: 'list', itemType: 'repoHit', path: '/users/{username}/repos', params: { limit: { type: 'number', description: 'How many repositories (1-50).' } } }),
+  L({ name: 'github_user_repositories', description: 'Repositories owned by a user.', kind: 'list', itemType: 'repoHit', path: '/users/{username}/repos', params: { limit: { type: 'number', description: 'How many repositories (1-50).' } } }),
   L({ name: 'github_user_social_accounts', description: 'Public social accounts linked to a user.', kind: 'list', itemType: 'socialAccount', path: '/users/{username}/social_accounts', params: { limit: { type: 'number', description: 'How many accounts (1-50).' } } }),
   L({ name: 'github_user_followers', description: 'Followers of a user.', kind: 'list', itemType: 'user', path: '/users/{username}/followers', params: { limit: { type: 'number', description: 'How many followers (1-50).' } } }),
   L({ name: 'github_user_following', description: 'Users a user follows.', kind: 'list', itemType: 'user', path: '/users/{username}/following', params: { limit: { type: 'number', description: 'How many users (1-50).' } } }),
