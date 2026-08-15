@@ -1,7 +1,7 @@
 {
   "name": "dsh-github-intelligence",
-  "version": "2.5.0",
-  "description": "The most comprehensive developer-intelligence integration for DeepSeek Harness: 190+ read-only tools across GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, dev.to, RubyGems, and NuGet — with rate-limit-friendly caching.",
+  "version": "2.6.0",
+  "description": "The most comprehensive developer-intelligence integration for DeepSeek Harness: 195+ read-only tools across GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, dev.to, RubyGems, NuGet, and the Go module proxy — with rate-limit-friendly caching.",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
