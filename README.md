@@ -56,7 +56,7 @@ All values are optional and set in `cordis.yml`:
 | `defaultLimit` | number | `5` | Default result count when the model omits `limit`. |
 | `bodyPreviewChars` | number | `500` | Maximum characters kept from a release body preview. |
 | `cacheTtlMs` | number | `60000` | In-memory response cache TTL, so composed calls stay cheap. |
-| `userAgent` | string | `dsh-github-intelligence/2.4.0` | User-Agent header sent to the GitHub API. |
+| `userAgent` | string | `dsh-github-intelligence/2.4.1` | User-Agent header sent to the GitHub API. |
 
 ## Why "most complete"
 
