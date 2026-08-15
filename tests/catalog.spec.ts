@@ -226,4 +226,127 @@ describe('generated tools', () => {
       expect(result).toMatchObject(c.expected)
     }
   })
+
+  it('enforces limit locally even when the API ignores the query param', async () => {
+    const commits = Array.from({ length: 10 }, (_, i) => ({
+      sha: `abc${i}`, message: `commit ${i}`, author: { login: 'u' }, date: null, html_url: `https://x/${i}`,
+    }))
+    const fetch = fetcherMock(() => commits)
+    const spec = catalog.find((s) => s.name === 'github_repo_commits')
+    const tool = buildCatalogTool(fetch, spec!)
+    const limited = await tool.execute({ owner: 'a', repo: 'b', limit: 3 }, exec())
+    expect((limited as { items: unknown[] }).items).toHaveLength(3)
+    const defaulted = await tool.execute({ owner: 'a', repo: 'b' }, exec())
+    expect((defaulted as { items: unknown[] }).items).toHaveLength(5)
+  })
+
+  it('appends the required Stack Exchange site param', async () => {
+    const fetch = fetcherMock(() => ({
+      items: [{ answer_id: 1, score: 2, is_accepted: true, owner: { display_name: 'u' }, creation_date: 1700000000, link: 'https://x/1' }],
+    }))
+    const spec = catalog.find((s) => s.name === 'so_question_answers')
+    const tool = buildCatalogTool(fetch, spec!)
+    await tool.execute({ questionId: '164202' }, exec())
+    expect(String(fetch.mock.calls[0]?.[0])).toContain('site=stackoverflow')
+  })
+
+  it('ships the v2.4.0 tool set (gitlab/gitee/devto/so/reddit/npm)', () => {
+    for (const name of [
+      'gitlab_project_issues', 'gitlab_project_merge_requests', 'gitlab_project_commits', 'gitlab_project_branches',
+      'gitee_repo_releases', 'gitee_repo_issues', 'gitee_repo_commits',
+      'so_question_answers', 'so_top_tags',
+      'reddit_subreddit_rising', 'reddit_subreddit_controversial',
+      'devto_articles', 'devto_article', 'devto_user',
+      'npm_package_dependencies',
+    ]) {
+      expect(catalog.some((spec) => spec.name === name), `missing ${name}`).toBe(true)
+    }
+  })
+
+  it('parses the v2.4.0 tools from realistic fixtures', async () => {
+    const cases: Array<{ name: string; args: Record<string, unknown>; fixture: unknown; expected: Record<string, unknown> }> = [
+      {
+        name: 'gitlab_project_issues', args: { projectId: 'gitlab-org/gitlab' },
+        fixture: [{ iid: 1, title: 'bug', state: 'opened', author: { username: 'u' }, created_at: '2026-01-01T00:00:00Z', user_notes_count: 3, web_url: 'https://gitlab.com/x/-/issues/1' }],
+        expected: { items: [{ iid: 1, title: 'bug', author: 'u', comments: 3 }] },
+      },
+      {
+        name: 'gitlab_project_merge_requests', args: { projectId: 'gitlab-org/gitlab' },
+        fixture: [{ iid: 2, title: 'mr', state: 'merged', author: { username: 'u' }, created_at: null, merged_at: '2026-02-01T00:00:00Z', web_url: 'https://gitlab.com/x/-/merge_requests/2' }],
+        expected: { items: [{ iid: 2, title: 'mr', mergedAt: '2026-02-01' }] },
+      },
+      {
+        name: 'gitlab_project_commits', args: { projectId: 'gitlab-org/gitlab' },
+        fixture: [{ short_id: 'abc', title: 'fix', author_name: 'u', created_at: '2026-01-01T00:00:00Z', web_url: 'https://gitlab.com/x/-/commit/abc' }],
+        expected: { items: [{ sha: 'abc', title: 'fix', author: 'u' }] },
+      },
+      {
+        name: 'gitlab_project_branches', args: { projectId: 'gitlab-org/gitlab' },
+        fixture: [{ name: 'main', default: true, protected: true, merged: false, web_url: 'https://gitlab.com/x/-/tree/main' }],
+        expected: { items: [{ name: 'main', default: true, protected: true }] },
+      },
+      {
+        name: 'gitee_repo_releases', args: { owner: 'o', repo: 'r' },
+        fixture: [{ tag_name: 'v1', name: 'R', created_at: '2026-01-01T00:00:00Z', html_url: 'https://gitee.com/o/r/releases/v1' }],
+        expected: { items: [{ tagName: 'v1', name: 'R' }] },
+      },
+      {
+        name: 'gitee_repo_issues', args: { owner: 'o', repo: 'r' },
+        fixture: [{ number: 3, title: 'issue', issue_state: 'open', user: { login: 'u' }, comments: 1, created_at: null, html_url: 'https://gitee.com/o/r/issues/3' }],
+        expected: { items: [{ number: 3, title: 'issue', state: 'open', user: 'u' }] },
+      },
+      {
+        name: 'gitee_repo_commits', args: { owner: 'o', repo: 'r' },
+        fixture: [{ sha: 'abc', commit: { message: 'fix', author: { name: 'u', date: '2026-01-01T00:00:00Z' } }, html_url: 'https://gitee.com/o/r/commit/abc' }],
+        expected: { items: [{ sha: 'abc', message: 'fix', author: 'u' }] },
+      },
+      {
+        name: 'so_question_answers', args: { questionId: '164202' },
+        fixture: { items: [{ answer_id: 9, score: 5, is_accepted: true, owner: { display_name: 'u' }, creation_date: 1700000000, link: 'https://x/9' }] },
+        expected: { items: [{ answerId: 9, score: 5, accepted: true, author: 'u' }] },
+      },
+      {
+        name: 'so_top_tags', args: {},
+        fixture: { items: [{ name: 'javascript', count: 2500000 }] },
+        expected: { items: [{ name: 'javascript', count: 2500000 }] },
+      },
+      {
+        name: 'reddit_subreddit_rising', args: { subreddit: 'programming' },
+        fixture: { data: { children: [{ data: { title: 't', subreddit: 'programming', score: 1, num_comments: 2, author: 'u', created_utc: 1700000000, url: 'https://x', permalink: '/r/programming/comments/1' } }] } },
+        expected: { items: [{ title: 't', subreddit: 'programming', score: 1 }] },
+      },
+      {
+        name: 'reddit_subreddit_controversial', args: { subreddit: 'programming' },
+        fixture: { data: { children: [{ data: { title: 'c', subreddit: 'programming', score: -1, num_comments: 0, author: 'u', created_utc: 1700000000, url: 'https://x', permalink: '/r/programming/comments/2' } }] } },
+        expected: { items: [{ title: 'c', score: -1 }] },
+      },
+      {
+        name: 'devto_articles', args: { tag: 'javascript', per_page: 3 },
+        fixture: [{ id: 1, title: 'a', description: 'd', created_at: '2026-01-01T00:00:00Z', tag_list: ['javascript'], user: { username: 'u' }, positive_reactions_count: 4, comments_count: 2, url: 'https://dev.to/u/a' }],
+        expected: { items: [{ id: 1, title: 'a', author: 'u', reactions: 4 }] },
+      },
+      {
+        name: 'devto_article', args: { articleId: '1' },
+        fixture: { id: 1, title: 'a', description: 'd', body_markdown: '# hi', reading_time_minutes: 2, created_at: '2026-01-01T00:00:00Z', tag_list: ['javascript'], user: { username: 'u' }, url: 'https://dev.to/u/a' },
+        expected: { item: { id: 1, title: 'a', bodyMarkdown: '# hi', readingMinutes: 2 } },
+      },
+      {
+        name: 'devto_user', args: { userId: '1' },
+        fixture: { id: 1, username: 'u', name: 'U', summary: 's', location: null, website_url: null, profile_image: null, joined_at: '2026-01-01T00:00:00Z' },
+        expected: { item: { username: 'u', name: 'U', summary: 's' } },
+      },
+      {
+        name: 'npm_package_dependencies', args: { package: 'dsh-plugin-doctor' },
+        fixture: { name: 'dsh-plugin-doctor', 'dist-tags': { latest: '0.1.0' }, versions: { '0.1.0': { dependencies: { commander: '^14.0.1', semver: '^7.7.2' } } } },
+        expected: { item: { package: 'dsh-plugin-doctor', version: '0.1.0', deps: [{ name: 'commander', range: '^14.0.1' }, { name: 'semver', range: '^7.7.2' }] } },
+      },
+    ]
+    for (const c of cases) {
+      const fetch = fetcherMock(() => c.fixture)
+      const spec = catalog.find((s) => s.name === c.name)
+      const tool = buildCatalogTool(fetch, spec!)
+      const result = await tool.execute(c.args, exec())
+      expect(result).toMatchObject(c.expected)
+    }
+  })
 })
