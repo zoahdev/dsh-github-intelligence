@@ -6,7 +6,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**The most comprehensive developer-intelligence integration for DeepSeek Harness: 160+ read-only tools across 11 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, and Reddit. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
+**The most comprehensive developer-intelligence integration for DeepSeek Harness: 170+ read-only tools across 11 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, and Reddit. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
 
 > Topic: [`dsh-plugin`](https://github.com/topics/dsh-plugin) · Tested with `dsh` 0.1.0-rc.6 · Node 24 / pnpm 11
 
@@ -56,17 +56,23 @@ All values are optional and set in `cordis.yml`:
 | `defaultLimit` | number | `5` | Default result count when the model omits `limit`. |
 | `bodyPreviewChars` | number | `500` | Maximum characters kept from a release body preview. |
 | `cacheTtlMs` | number | `60000` | In-memory response cache TTL, so composed calls stay cheap. |
-| `userAgent` | string | `dsh-github-intelligence/1.0.0` | User-Agent header sent to the GitHub API. |
+| `userAgent` | string | `dsh-github-intelligence/2.3.0` | User-Agent header sent to the GitHub API. |
 
 ## Why "most complete"
 
-- **Breadth**: 160+ tools across 11 external developer ecosystems plus the dsh registry — not just one endpoint.
+- **Breadth**: 170+ tools across 11 external developer ecosystems plus the dsh registry — not just one endpoint.
 - **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_help` makes the catalog self-discoverable.
 - **Rate-limit friendly**: every endpoint is wrapped in a short TTL cache; the deep report reuses cached sub-calls (4 HTTP requests, not 4+ per repetition).
 - **Correctness**: issues are filtered to exclude pull requests; every request honors `exec.signal`; anonymous rate limits and 429s produce actionable errors.
-- **Verified**: 27 tests, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
+- **Verified**: 35 tests, plus a real-network smoke for every v2.3.0 tool, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
 
 > ⭐ If this helps your agent, a star helps the ecosystem find it. Feedback and issues are equally welcome.
+
+## What's new in v2.3.0
+
+- Plain list tools: `github_repo_releases`, `github_repo_issues` (pull requests filtered out), `github_repo_pulls`.
+- People & social: `github_user_repos`, `github_user_social_accounts`, `github_repo_contributors`, `github_repo_subscribers`, `github_repo_collaborators` (with effective permission, requires push access).
+- Git, security & search: `github_repo_git_refs` (matching refs), `github_repo_punch_card`, `github_repo_security_advisories`, `github_search_repositories`.
 
 ## Development
 
@@ -115,7 +121,7 @@ MIT © 2026 zoahdev
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：160+ 只读工具，横跨 11 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
+**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：170+ 只读工具，横跨 11 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
 
 > 话题：[`dsh-plugin`](https://github.com/topics/dsh-plugin) · 已在 `dsh` 0.1.0-rc.6 / Node 24 / pnpm 11 实测
 
@@ -153,13 +159,19 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 
 ## 为什么说"最完整"
 
-- **覆盖面**：160+ 工具、11 大外部生态 + dsh 注册表，不是单点工具；
+- **覆盖面**：170+ 工具、11 大外部生态 + dsh 注册表，不是单点工具；
 - **深度**：`github_repo_report` 一次回答"这个仓库到底怎么样"；`github_help` 让目录自发现；
 - **省配额**：所有接口带短 TTL 缓存，深度报告复用缓存子调用，一次只发 4 个请求；
 - **正确性**：Issue 自动排除 PR、全部请求支持取消、匿名限流/429 有明确提示；
-- **验证**：27 个测试 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
+- **验证**：35 个测试 + v2.3.0 全部新工具真实网络冒烟 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
 
 > ⭐ 如果它帮到了你的 agent，一个 star 就能让整个生态更容易发现它。反馈和 issue 同样欢迎。
+
+## v2.3.0 新增
+
+- 平铺列表工具：`github_repo_releases`、`github_repo_issues`（自动排除 PR）、`github_repo_pulls`；
+- 人与社交：`github_user_repos`、`github_user_social_accounts`、`github_repo_contributors`、`github_repo_subscribers`、`github_repo_collaborators`（含实际权限，需 push 权限 token）；
+- Git、安全与搜索：`github_repo_git_refs`（ref 前缀匹配）、`github_repo_punch_card`、`github_repo_security_advisories`、`github_search_repositories`。
 
 ## 开发
 
