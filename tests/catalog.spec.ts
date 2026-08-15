@@ -292,8 +292,8 @@ describe('generated tools', () => {
       },
       {
         name: 'gitee_repo_issues', args: { owner: 'o', repo: 'r' },
-        fixture: [{ number: 3, title: 'issue', issue_state: 'open', user: { login: 'u' }, comments: 1, created_at: null, html_url: 'https://gitee.com/o/r/issues/3' }],
-        expected: { items: [{ number: 3, title: 'issue', state: 'open', user: 'u' }] },
+        fixture: [{ number: 3, title: 'issue', issue_state: 'open', user: { login: 'u' }, comments: 1, created_at: null, html_url: 'https://gitee.com/o/r/issues/IK8TOP' }],
+        expected: { items: [{ ident: 'IK8TOP', title: 'issue', state: 'open', user: 'u' }] },
       },
       {
         name: 'gitee_repo_commits', args: { owner: 'o', repo: 'r' },
