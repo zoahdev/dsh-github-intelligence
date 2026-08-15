@@ -830,6 +830,49 @@ const parsers: Record<string, (raw: unknown, name?: unknown) => unknown> = {
       deps: list,
     }
   },
+  rubygemHit(raw) {
+    const r = raw as Record<string, unknown>
+    return {
+      name: s(r.name) ?? '',
+      info: s(r.info),
+      version: s(r.version),
+      downloads: n(r.downloads),
+      homepage: s(r.homepage_uri),
+      sourceUrl: s(r.source_code_uri),
+      projectUrl: s(r.project_uri),
+      authors: s(r.authors),
+    }
+  },
+  rubygemDetail(raw) {
+    const r = raw as Record<string, unknown>
+    const licenses = Array.isArray(r.licenses) ? (r.licenses as unknown[]).filter((x): x is string => typeof x === 'string') : []
+    return {
+      name: s(r.name) ?? '',
+      info: s(r.info),
+      version: s(r.version),
+      downloads: n(r.downloads),
+      homepage: s(r.homepage_uri),
+      sourceUrl: s(r.source_code_uri),
+      documentationUrl: s(r.documentation_uri),
+      projectUrl: s(r.project_uri),
+      authors: s(r.authors),
+      licenses,
+    }
+  },
+  nugetHit(raw) {
+    const r = raw as Record<string, unknown>
+    const authors = Array.isArray(r.authors) ? (r.authors as unknown[]).filter((x): x is string => typeof x === 'string') : []
+    const tags = Array.isArray(r.tags) ? (r.tags as unknown[]).filter((x): x is string => typeof x === 'string') : []
+    return {
+      id: s(r.id) ?? '',
+      version: s(r.version),
+      description: s(r.description) ?? s(r.summary),
+      downloads: n(r.totalDownloads),
+      projectUrl: s(r.projectUrl),
+      authors,
+      tags,
+    }
+  },
   deploymentStatus(raw) {
     const r = raw as Record<string, unknown>
     return {
@@ -1421,6 +1464,15 @@ const itemSchemas: Record<string, object> = {
   npmDependencies: { type: 'object', additionalProperties: false, properties: {
     package: strSchema(), version: strSchema(), deps: { type: 'array', required: true, items: { type: 'object', additionalProperties: false, properties: { name: strSchema(), range: strSchema() } } },
   } },
+  rubygemHit: { type: 'object', additionalProperties: false, properties: {
+    name: strSchema(), info: nullableStr(), version: nullableStr(), downloads: intSchema(), homepage: nullableStr(), sourceUrl: nullableStr(), projectUrl: nullableStr(), authors: nullableStr(),
+  } },
+  rubygemDetail: { type: 'object', additionalProperties: false, properties: {
+    name: strSchema(), info: nullableStr(), version: nullableStr(), downloads: intSchema(), homepage: nullableStr(), sourceUrl: nullableStr(), documentationUrl: nullableStr(), projectUrl: nullableStr(), authors: nullableStr(), licenses: { type: 'array', required: true, items: { type: 'string' } },
+  } },
+  nugetHit: { type: 'object', additionalProperties: false, properties: {
+    id: strSchema(), version: nullableStr(), description: nullableStr(), downloads: intSchema(), projectUrl: nullableStr(), authors: { type: 'array', required: true, items: { type: 'string' } }, tags: { type: 'array', required: true, items: { type: 'string' } },
+  } },
 }
 
 const objectSchemas: Record<string, object> = {
@@ -1617,6 +1669,9 @@ const objectFormatters: Record<string, (item: Record<string, unknown>) => string
   devtoArticleDetail: (i) => `${i.title} (${i.readingMinutes} min read, by @${i.author}, ${i.publishedAt ?? '?'})\n${i.description ?? ''}\n${i.url}`,
   devtoUser: (i) => `@${i.username} (${i.name ?? ''}) — ${i.summary ?? ''}${i.location ? ` · ${i.location}` : ''} ${i.websiteUrl ?? ''}`,
   npmDependencies: (i) => `${i.package}@${i.version} dependencies:\n${(i.deps as Array<Record<string, unknown>>).slice(0, 20).map((d) => `- ${d.name}@${d.range}`).join('\n')}`,
+  rubygemHit: (i) => `${i.name} (${i.version ?? '?'}, ${i.downloads} downloads) — ${i.info ?? ''} ${i.projectUrl ?? ''}`,
+  rubygemDetail: (i) => `${i.name} ${i.version} (${i.downloads} downloads) — ${i.info ?? ''}\nauthors: ${i.authors ?? 'n/a'} · licenses: ${(i.licenses as string[]).join(', ') || 'n/a'}\n${i.homepage ?? ''} ${i.projectUrl ?? ''}`,
+  nugetHit: (i) => `${i.id} (${i.version ?? '?'}, ${i.downloads} downloads) — ${i.description ?? ''} ${i.projectUrl ?? ''}`,
   soUser: (i) => `${i.displayName} (reputation ${i.reputation}${i.location ? `, ${i.location}` : ''}) ${i.link}`,
   redditUser: (i) => `u/${i.name} (${i.linkKarma} link karma, ${i.commentKarma} comment karma, since ${i.created ?? '?'})`,
 }
@@ -1751,6 +1806,11 @@ export const catalog: ToolSpec[] = [
   L({ name: 'npm_downloads_last_week', description: 'Download counts of an npm package over the last week.', kind: 'object', itemType: 'npmDownloads', baseUrl: 'https://api.npmjs.org', path: '/downloads/point/last-week/{package}' }),
   L({ name: 'npm_downloads_last_month', description: 'Download counts of an npm package over the last month.', kind: 'object', itemType: 'npmDownloads', baseUrl: 'https://api.npmjs.org', path: '/downloads/point/last-month/{package}' }),
   L({ name: 'npm_package_dependencies', description: 'Direct runtime dependencies of an npm package at its latest version.', kind: 'object', itemType: 'npmDependencies', baseUrl: 'https://registry.npmjs.org', path: '/{package}' }),
+  // rubygems
+  L({ name: 'rubygems_search', description: 'Search RubyGems packages by name or keyword.', kind: 'list', itemType: 'rubygemHit', baseUrl: 'https://rubygems.org/api/v1', path: '/search.json', params: { query: { type: 'string', required: true, description: 'Search query.' }, limit: { type: 'number', default: 5, description: 'How many gems (1-50).' } } }),
+  L({ name: 'rubygems_gem', description: 'Details of a RubyGem by exact name: version, downloads, licenses, homepage, source.', kind: 'object', itemType: 'rubygemDetail', baseUrl: 'https://rubygems.org/api/v1', path: '/gems/{gem}.json' }),
+  // nuget
+  L({ name: 'nuget_search', description: 'Search NuGet packages by id or keyword.', kind: 'list', itemType: 'nugetHit', baseUrl: 'https://azuresearch-usnc.nuget.org', path: '/query', wrap: 'data', params: { q: { type: 'string', required: true, description: 'Search query.' }, take: { type: 'number', default: 5, description: 'How many packages (1-50).' } } }),
   // PyPI
   L({ name: 'pypi_project', description: 'Metadata of a PyPI project: summary, latest version, author, license, Python requirement.', kind: 'object', itemType: 'pypiProject', baseUrl: 'https://pypi.org/pypi', path: '/{package}/json' }),
   L({ name: 'pypi_versions', description: 'Version history of a PyPI project with upload dates and file counts.', kind: 'object', itemType: 'pypiVersions', baseUrl: 'https://pypi.org/pypi', path: '/{package}/json' }),
@@ -1990,6 +2050,7 @@ function sourceFor(spec: ToolSpec, args: Record<string, unknown>): string {
   if (args.username !== undefined) return `@${args.username}`
   if (args.org !== undefined) return `org:${args.org}`
   if (args.gistId !== undefined) return `gist:${args.gistId}`
+  if (args.query !== undefined) return `query: ${args.query}`
   if (args.q !== undefined) return `query: ${args.q}`
   return spec.name
 }
@@ -2095,8 +2156,8 @@ export function buildHelpTool(count: number) {
   return defineTool({
     name: 'github_help',
     description:
-      `List the ${count} available tools (github_*, npm_*, pypi_*, crates_*, docker_*, hf_*, hn_*, so_*, `
-      + `reddit_*, gitlab_*, gitee_*) with one-line descriptions. Call this first when the user asks `
+      `List the ${count} available tools (github_*, gitlab_*, gitee_*, npm_*, pypi_*, crates_*, `
+      + `docker_*, hf_*, hn_*, so_*, reddit_*, devto_*, rubygems_*, nuget_*) with one-line descriptions. Call this first when the user asks `
       + 'about any developer platform and you are unsure which tool to use.',
     parameters: {},
     output: {
