@@ -8,7 +8,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**The most comprehensive developer-intelligence integration for DeepSeek Harness: 195+ read-only tools across 15 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, dev.to, RubyGems, NuGet, and the Go module proxy. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
+**The most comprehensive developer-intelligence integration for DeepSeek Harness: 196+ read-only tools across 16 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, dev.to, RubyGems, NuGet, the Go module proxy, and ArXiv. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
 
 > Topic: [`dsh-plugin`](https://github.com/topics/dsh-plugin) · Tested with `dsh` 0.1.0-rc.6 · Node 24 / pnpm 11
 
@@ -65,11 +65,11 @@ All values are optional and set in `cordis.yml`:
 
 ## Why "most complete"
 
-- **Breadth**: 195+ tools across 15 external developer ecosystems plus the dsh registry — not just one endpoint.
-- **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_weekly_digest` answers "what happened this week"; `github_help` makes the catalog self-discoverable.
+- **Breadth**: 196+ tools across 16 external developer ecosystems plus the dsh registry — not just one endpoint.
+- **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_weekly_digest` answers "what happened this week"; `arxiv_search` searches the preprint literature (16th ecosystem); `github_help` makes the catalog self-discoverable.
 - **Rate-limit friendly**: every endpoint is wrapped in a short TTL cache; the deep report reuses cached sub-calls (4 HTTP requests, not 4+ per repetition).
 - **Correctness**: issues are filtered to exclude pull requests; every request honors `exec.signal`; anonymous rate limits and 429s produce actionable errors.
-- **Verified**: 44 tests, plus a real-network smoke for every v2.3.0..v2.8.0 tool (37 tools) and a live `github_weekly_digest` run, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
+- **Verified**: 47 tests, plus a real-network smoke for every v2.3.0..v2.8.0 tool (37 tools) and a live `github_weekly_digest` run, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
 
 > ⭐ If this helps your agent, a star helps the ecosystem find it. Feedback and issues are equally welcome.
 
@@ -156,7 +156,7 @@ MIT © 2026 zoahdev
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：195+ 只读工具，横跨 15 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit、dev.to、RubyGems、NuGet、Go module proxy）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
+**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：196+ 只读工具，横跨 16 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit、dev.to、RubyGems、NuGet、Go module proxy、ArXiv）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
 
 > 话题：[`dsh-plugin`](https://github.com/topics/dsh-plugin) · 已在 `dsh` 0.1.0-rc.6 / Node 24 / pnpm 11 实测
 
@@ -194,7 +194,7 @@ dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
 
 ## 为什么说"最完整"
 
-- **覆盖面**：195+ 工具、15 大外部生态 + dsh 注册表，不是单点工具；
+- **覆盖面**：196+ 工具、16 大外部生态 + dsh 注册表，不是单点工具；
 - **深度**：`github_repo_report` 一次回答"这个仓库到底怎么样"；`github_help` 让目录自发现；
 - **周报**：`github_weekly_digest` 一次回答"这个仓库这周发生了什么"；
 - **省配额**：所有接口带短 TTL 缓存，深度报告复用缓存子调用，一次只发 4 个请求；
