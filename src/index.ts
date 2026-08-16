@@ -2,10 +2,11 @@
  * dsh-github-intelligence — the most complete GitHub integration for
  * DeepSeek Harness.
  *
- * Seven model-facing tools over the public GitHub REST API: repo overview,
- * releases, issues, pull requests, contributors, repository search, and a
- * composite deep repo report. Optional token, cancellation, and a short TTL
- * cache keep the anonymous rate budget usable.
+ * 195+ read-only tools across 15 developer ecosystems (GitHub, GitLab,
+ * Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News,
+ * Stack Overflow, Reddit, dev.to, RubyGems, NuGet, and the Go module proxy),
+ * plus the dsh plugin registry. Optional token, cancellation, and a short
+ * TTL cache keep the anonymous rate budget usable.
  * @module dsh-github-intelligence
  */
 
@@ -54,7 +55,7 @@ export const Config: Schema<Config> = Schema.object({
   defaultLimit: Schema.number().default(5),
   bodyPreviewChars: Schema.number().default(500),
   cacheTtlMs: Schema.number().default(60_000),
-  userAgent: Schema.string().default('dsh-github-intelligence/2.8.0'),
+  userAgent: Schema.string().default('dsh-github-intelligence/2.8.1'),
 })
 
 function assertPositiveInteger(name: string, value: number): void {
@@ -75,7 +76,7 @@ function clampLimit(value: number): number {
 
 function clientOptions(config: Config): GitHubClientOptions {
   const options: GitHubClientOptions = {
-    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.8.0',
+    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.8.1',
     timeoutMs: config.timeoutMs ?? 10_000,
     bodyPreviewChars: config.bodyPreviewChars ?? 500,
     cacheTtlMs: config.cacheTtlMs ?? 60_000,
