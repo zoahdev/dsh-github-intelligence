@@ -2,11 +2,11 @@
  * dsh-github-intelligence — the most complete GitHub integration for
  * DeepSeek Harness.
  *
- * 195+ read-only tools across 15 developer ecosystems (GitHub, GitLab,
+ * 196+ read-only tools across 16 developer ecosystems (GitHub, GitLab,
  * Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News,
- * Stack Overflow, Reddit, dev.to, RubyGems, NuGet, and the Go module proxy),
- * plus the dsh plugin registry. Optional token, cancellation, and a short
- * TTL cache keep the anonymous rate budget usable.
+ * Stack Overflow, Reddit, dev.to, RubyGems, NuGet, the Go module proxy, and
+ * ArXiv), plus the dsh plugin registry. Optional token, cancellation, and a
+ * short TTL cache keep the anonymous rate budget usable.
  * @module dsh-github-intelligence
  */
 
@@ -26,6 +26,7 @@ import {
 } from './github.js'
 import { buildCatalogTool, buildHelpTool, catalog, type Fetcher } from './catalog.js'
 import { EcosystemClient } from './ecosystems.js'
+import { searchArxiv } from './arxiv.js'
 
 export const name = 'github-intelligence'
 
@@ -55,7 +56,7 @@ export const Config: Schema<Config> = Schema.object({
   defaultLimit: Schema.number().default(5),
   bodyPreviewChars: Schema.number().default(500),
   cacheTtlMs: Schema.number().default(60_000),
-  userAgent: Schema.string().default('dsh-github-intelligence/2.8.1'),
+  userAgent: Schema.string().default('dsh-github-intelligence/2.9.0'),
 })
 
 function assertPositiveInteger(name: string, value: number): void {
@@ -76,7 +77,7 @@ function clampLimit(value: number): number {
 
 function clientOptions(config: Config): GitHubClientOptions {
   const options: GitHubClientOptions = {
-    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.8.1',
+    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.9.0',
     timeoutMs: config.timeoutMs ?? 10_000,
     bodyPreviewChars: config.bodyPreviewChars ?? 500,
     cacheTtlMs: config.cacheTtlMs ?? 60_000,
@@ -152,6 +153,25 @@ function renderWeeklyDigest(value: {
     lines.push('', '## Commits', ...value.commits.map((c) => `- ${c.sha.slice(0, 7)} ${c.message.split('\n')[0]} (${c.author ?? '?'}, ${c.date?.slice(0, 10) ?? '?'})`))
   }
   if (lines.length === 1) lines.push('No releases, merged PRs, new issues, or commits in this window.')
+  return lines.join('\n')
+}
+
+function renderArxiv(value: {
+  query: string
+  results: Array<{ id: string; title: string; summary: string; published: string; authors: string[]; link: string }>
+}): string {
+  if (value.results.length === 0) return `No ArXiv results for "${value.query}".`
+  const lines = [`# ArXiv results for "${value.query}"`]
+  for (const entry of value.results) {
+    const authors = entry.authors.length > 0 ? entry.authors.join(', ') : 'unknown authors'
+    lines.push(
+      '',
+      `## ${entry.title}`,
+      `${authors} · ${entry.published.slice(0, 10)}`,
+      entry.summary,
+      entry.link !== '' ? entry.link : entry.id,
+    )
+  }
   return lines.join('\n')
 }
 
@@ -805,6 +825,70 @@ export function defineTools(config: Config) {
     presentCall: (args) => ({ card: 'generic', title: `GitHub repos: ${args.username}`, kind: 'search', rawInput: args }),
   })
 
+  const arxivSearch = defineTool({
+    name: 'arxiv_search',
+    description:
+      'Search the ArXiv preprint corpus (physics, CS, math, and more) by keyword. '
+      + 'Returns title, authors, published date, abstract summary, and the paper link. '
+      + 'No API key required. Use it for literature search and research questions.',
+    parameters: {
+      query: { type: 'string', required: true, description: 'Search query, e.g. "retrieval-augmented generation" or "diffusion models".' },
+      max_results: { type: 'number', description: 'How many results (1-20). Defaults to 5.' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          query: { type: 'string', required: true },
+          results: {
+            type: 'array',
+            required: true,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                id: { type: 'string', required: true },
+                title: { type: 'string', required: true },
+                summary: { type: 'string', required: true },
+                published: { type: 'string', required: true },
+                authors: { type: 'array', required: true, items: { type: 'string' } },
+                link: { type: 'string', required: true },
+              },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: renderArxiv(value) }],
+    },
+    async execute(args, exec) {
+      const query = args.query.trim()
+      if (query === '') throw new Error('github-intelligence: `query` must be a non-empty string')
+      const maxResults = Math.min(Math.max(Math.trunc(args.max_results ?? config.defaultLimit ?? 5), 1), 20)
+      const options = clientOptions(config)
+      const entries = await searchArxiv({
+        query,
+        maxResults,
+        signal: exec.signal,
+        timeoutMs: options.timeoutMs,
+        cacheTtlMs: options.cacheTtlMs,
+        userAgent: options.userAgent,
+      })
+      return {
+        query,
+        results: entries.map((entry) => ({
+          id: entry.id,
+          title: entry.title,
+          summary: entry.summary,
+          published: entry.published,
+          authors: entry.authors,
+          link: entry.link,
+        })),
+      }
+    },
+    presentCall: (args) => ({ card: 'generic', title: `ArXiv search: ${args.query}`, kind: 'search', rawInput: args }),
+  })
+
   const weeklyDigest = defineTool({
     name: 'github_weekly_digest',
     description:
@@ -883,7 +967,7 @@ export function defineTools(config: Config) {
     presentCall: (args) => ({ card: 'generic', title: `Weekly digest: ${args.owner}/${args.repo}`, kind: 'search', rawInput: args }),
   })
 
-  return [repo, releases, search, issues, pulls, contributors, report, compare, trending, userRepos, weeklyDigest] as const
+  return [repo, releases, search, issues, pulls, contributors, report, compare, trending, userRepos, arxivSearch, weeklyDigest] as const
 }
 
 /**
@@ -913,5 +997,5 @@ export function apply(ctx: Context, config: Config): void {
       : githubFetcher
     ctx.tools.register(buildCatalogTool(fetcher, spec))
   }
-  ctx.tools.register(buildHelpTool(catalog.length + 11))
+  ctx.tools.register(buildHelpTool(catalog.length + 12))
 }
