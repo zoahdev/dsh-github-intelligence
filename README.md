@@ -12,6 +12,8 @@
 
 > Topic: [`dsh-plugin`](https://github.com/topics/dsh-plugin) · Tested with `dsh` 0.1.0-rc.6 · Node 24 / pnpm 11
 
+**Live tool catalog:** https://zoahdev.github.io/dsh-github-intelligence/
+
 ## Tools
 
 | Tool | What it does |
