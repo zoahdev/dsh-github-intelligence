@@ -1,6 +1,6 @@
 # dsh-github-intelligence
 
-[![CI](https://github.com/zoahdev/dsh-github-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/zoahdev/dsh-github-intelligence/actions) [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
+[![CI](https://github.com/zoahdev/dsh-github-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/zoahdev/dsh-github-intelligence/actions) [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases) [![npm](https://img.shields.io/npm/v/dsh-github-intelligence)](https://www.npmjs.com/package/dsh-github-intelligence)
 
 [English](#english) · [中文](#中文)
 
@@ -40,9 +40,12 @@ Example prompts:
 ## Install
 
 ```sh
-dsh plugin --profile web add github:zoahdev/dsh-github-intelligence
-# or from tarball:
-dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
+dsh plugin --profile web add dsh-github-intelligence
+# or, using the upstream CLI directly:
+pnpm dlx @deepseek-ai/dsh plugin --profile web add dsh-github-intelligence
+
+# standalone CLI (same catalog, for humans):
+npm install -g dsh-github-intelligence
 ```
 
 Then restart `dsh web` and ask your agent to use the tools above.
