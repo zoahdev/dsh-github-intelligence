@@ -14,6 +14,8 @@
 
 **Live tool catalog:** https://zoahdev.github.io/dsh-github-intelligence/
 
+**Featured in:** [awesome-dsh-plugin](https://awesome-dsh-plugin.com) (4k★ list) · [awesome-deepseek-harness](https://github.com/0xsline/awesome-deepseek-harness) (562★ list) · [official Show & Tell #1657](https://github.com/deepseek-ai/deepseek-harness/discussions/1657)
+
 ## Tools
 
 | Tool | What it does |
