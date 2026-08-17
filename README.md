@@ -281,3 +281,6 @@ Top contributors: 1. tianyicui (5235) · 2. LegGasai (1361) · 3. imccyu (1168) 
 ## 许可证
 
 MIT © 2026 zoahdev
+
+
+**Engineering blog:** https://zoahdev.github.io/blog/ — deep-dives on the bugs behind this catalog (root causes, reproductions, mechanism-level fixes).
