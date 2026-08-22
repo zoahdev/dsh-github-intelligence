@@ -1,13 +1,13 @@
 # dsh-github-intelligence
 
-> The most comprehensive developer-intelligence integration for DeepSeek Harness: 185+ read-only model tools across 12 external ecosystems (GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, dev.to) plus the dsh registry itself. No API key required; rate-limit-friendly TTL caching; cancellation; UI cards.
+> Developer intelligence for DeepSeek Harness: 201 read-only tools across GitHub, 16 external ecosystems, and the dsh registry. Includes an authenticated maintainer inbox and evidence-based repository health audits.
 
 ## Key facts
 
 - Install: `dsh plugin --profile web add <tarball>` (see GitHub Releases) or `github:zoahdev/dsh-github-intelligence`
-- Tools: `github_repo_report`, `github_help`, `github_repo`, `github_releases`, `github_search`, `github_issues`, `github_pulls`, `github_contributors`, `github_compare`, `github_trending`, `github_user_repos`, plus 170+ generated `github_*`, `gitlab_*`, `gitee_*`, `npm_*`, `pypi_*`, `crates_*`, `docker_*`, `hf_*`, `hn_*`, `so_*`, `reddit_*`, `devto_*` tools
+- Flagship tools: `github_repo_report`, `github_weekly_digest`, `github_notifications`, `github_repo_health`, `github_compare`, `github_trending`, `arxiv_search`, and `github_help`
 - Config: `githubToken`, `timeoutMs`, `defaultLimit`, `bodyPreviewChars`, `cacheTtlMs`, `userAgent`
-- Verification: 39 unit tests; real-network smoke for every new tool (v2.4.0: 27 tools); CI installs the bundle into a fresh dsh profile and boots `dsh web`
+- Verification: 52 unit tests; 201 tools visible in a real DSH agent registry; multi-ecosystem real-network smoke; CI installs the bundle into a fresh dsh profile and boots `dsh web`
 
 ## Key files
 

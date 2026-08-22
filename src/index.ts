@@ -2,7 +2,7 @@
  * dsh-github-intelligence — the most complete GitHub integration for
  * DeepSeek Harness.
  *
- * 196+ read-only tools across 16 developer ecosystems (GitHub, GitLab,
+ * 201 read-only tools across 16 developer ecosystems (GitHub, GitLab,
  * Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News,
  * Stack Overflow, Reddit, dev.to, RubyGems, NuGet, the Go module proxy, and
  * ArXiv), plus the dsh plugin registry. Optional token, cancellation, and a
@@ -56,7 +56,7 @@ export const Config: Schema<Config> = Schema.object({
   defaultLimit: Schema.number().default(5),
   bodyPreviewChars: Schema.number().default(500),
   cacheTtlMs: Schema.number().default(60_000),
-  userAgent: Schema.string().default('dsh-github-intelligence/2.9.0'),
+  userAgent: Schema.string().default('dsh-github-intelligence/2.10.0'),
 })
 
 function assertPositiveInteger(name: string, value: number): void {
@@ -77,7 +77,7 @@ function clampLimit(value: number): number {
 
 function clientOptions(config: Config): GitHubClientOptions {
   const options: GitHubClientOptions = {
-    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.9.0',
+    userAgent: config.userAgent ?? 'dsh-github-intelligence/2.10.0',
     timeoutMs: config.timeoutMs ?? 10_000,
     bodyPreviewChars: config.bodyPreviewChars ?? 500,
     cacheTtlMs: config.cacheTtlMs ?? 60_000,
@@ -153,6 +153,72 @@ function renderWeeklyDigest(value: {
     lines.push('', '## Commits', ...value.commits.map((c) => `- ${c.sha.slice(0, 7)} ${c.message.split('\n')[0]} (${c.author ?? '?'}, ${c.date?.slice(0, 10) ?? '?'})`))
   }
   if (lines.length === 1) lines.push('No releases, merged PRs, new issues, or commits in this window.')
+  return lines.join('\n')
+}
+
+function renderNotifications(value: {
+  state: string
+  participating: string
+  notifications: Array<{
+    unread: boolean
+    reason: string
+    updatedAt: string | null
+    repository: { fullName: string }
+    subject: { title: string; type: string; htmlUrl: string | null }
+  }>
+  attention: { mentions: number; reviewRequests: number; assignments: number; authored: number; other: number }
+}): string {
+  const lines = [
+    '# GitHub attention queue',
+    `${value.notifications.length} ${value.state} notification(s) · ${value.participating} participation`,
+    `Mentions: ${value.attention.mentions} · Review requests: ${value.attention.reviewRequests} · Assignments: ${value.attention.assignments} · Authored: ${value.attention.authored} · Other: ${value.attention.other}`,
+  ]
+  if (value.notifications.length === 0) return [...lines, '', 'Nothing needs attention.'].join('\n')
+  for (const item of value.notifications) {
+    const unread = item.unread ? 'unread' : 'read'
+    const url = item.subject.htmlUrl ?? ''
+    lines.push(
+      '',
+      `- [${item.reason}; ${unread}] ${item.repository.fullName} · ${item.subject.type}: ${item.subject.title}${url === '' ? '' : ` ${url}`}`,
+    )
+  }
+  return lines.join('\n')
+}
+
+function daysSince(value: string | null): number | null {
+  if (value === null) return null
+  const time = Date.parse(value)
+  if (!Number.isFinite(time)) return null
+  return Math.max(0, Math.floor((Date.now() - time) / 86_400_000))
+}
+
+function renderRepoHealth(value: {
+  fullName: string
+  status: string
+  score: number
+  scoreBreakdown: { activity: number; release: number; community: number; maintainability: number; contributors: number }
+  evidence: {
+    pushedAt: string | null
+    latestRelease: string | null
+    recentCommits: number
+    visibleContributors: number
+    communityHealthPercentage: number | null
+  }
+  riskFlags: string[]
+  recommendations: string[]
+  caveat: string
+}): string {
+  const lines = [
+    `# ${value.fullName} — repository health`,
+    `Status: ${value.status.toUpperCase()} · Score: ${value.score}/100`,
+    `Activity ${value.scoreBreakdown.activity}/30 · Release ${value.scoreBreakdown.release}/20 · Community ${value.scoreBreakdown.community}/20 · Maintainability ${value.scoreBreakdown.maintainability}/15 · Contributors ${value.scoreBreakdown.contributors}/15`,
+    '',
+    `Last push: ${value.evidence.pushedAt?.slice(0, 10) ?? 'unknown'} · Latest release: ${value.evidence.latestRelease?.slice(0, 10) ?? 'none'} · Recent commits sampled: ${value.evidence.recentCommits} · Contributors sampled: ${value.evidence.visibleContributors}`,
+    `GitHub community profile: ${value.evidence.communityHealthPercentage === null ? 'unavailable' : `${value.evidence.communityHealthPercentage}%`}`,
+  ]
+  lines.push('', '## Risks', ...(value.riskFlags.length > 0 ? value.riskFlags.map((flag) => `- ${flag}`) : ['- No major heuristic risks detected.']))
+  lines.push('', '## Recommended next actions', ...(value.recommendations.length > 0 ? value.recommendations.map((item) => `- ${item}`) : ['- Keep the current maintenance cadence.']))
+  lines.push('', value.caveat)
   return lines.join('\n')
 }
 
@@ -967,7 +1033,236 @@ export function defineTools(config: Config) {
     presentCall: (args) => ({ card: 'generic', title: `Weekly digest: ${args.owner}/${args.repo}`, kind: 'search', rawInput: args }),
   })
 
-  return [repo, releases, search, issues, pulls, contributors, report, compare, trending, userRepos, arxivSearch, weeklyDigest] as const
+  const notifications = defineTool({
+    name: 'github_notifications',
+    description:
+      'Read the authenticated user\'s GitHub notification inbox as an actionable maintainer queue. '
+      + 'Highlights mentions, review requests, assignments, and authored-thread updates. Requires githubToken with notification read access.',
+    parameters: {
+      state: { type: 'string', enum: ['unread', 'all'], description: 'Return unread notifications (default) or all notifications.' },
+      participation: { type: 'string', enum: ['all', 'participating'], description: 'Return every notification (default) or only threads where the user participates.' },
+      limit: { type: 'number', description: 'How many notifications to return (1-50). Defaults to the configured defaultLimit.' },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          state: { type: 'string', enum: ['unread', 'all'], required: true },
+          participating: { type: 'string', enum: ['all', 'participating'], required: true },
+          attention: {
+            type: 'object', additionalProperties: false, required: true,
+            properties: {
+              mentions: { type: 'integer', required: true },
+              reviewRequests: { type: 'integer', required: true },
+              assignments: { type: 'integer', required: true },
+              authored: { type: 'integer', required: true },
+              other: { type: 'integer', required: true },
+            },
+          },
+          notifications: {
+            type: 'array', required: true,
+            items: {
+              type: 'object', additionalProperties: false,
+              properties: {
+                id: { type: 'string', required: true },
+                unread: { type: 'boolean', required: true },
+                reason: { type: 'string', required: true },
+                updatedAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                lastReadAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                repository: {
+                  type: 'object', additionalProperties: false, required: true,
+                  properties: {
+                    fullName: { type: 'string', required: true },
+                    htmlUrl: { type: 'string', required: true },
+                  },
+                },
+                subject: {
+                  type: 'object', additionalProperties: false, required: true,
+                  properties: {
+                    title: { type: 'string', required: true },
+                    type: { type: 'string', required: true },
+                    apiUrl: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                    htmlUrl: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                    latestCommentUrl: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: renderNotifications(value) }],
+    },
+    async execute(args, exec) {
+      const state = args.state ?? 'unread'
+      const participating = args.participation ?? 'all'
+      const list = await client.listNotifications(
+        state === 'all',
+        participating === 'participating',
+        clampLimit(args.limit ?? config.defaultLimit ?? 5),
+        exec.signal,
+      )
+      const attention = { mentions: 0, reviewRequests: 0, assignments: 0, authored: 0, other: 0 }
+      for (const item of list) {
+        if (item.reason === 'mention' || item.reason === 'team_mention') attention.mentions += 1
+        else if (item.reason === 'review_requested') attention.reviewRequests += 1
+        else if (item.reason === 'assign') attention.assignments += 1
+        else if (item.reason === 'author') attention.authored += 1
+        else attention.other += 1
+      }
+      return { state, participating, attention, notifications: list }
+    },
+    presentCall: () => ({ card: 'generic', title: 'GitHub attention queue', kind: 'search' }),
+  })
+
+  const repoHealth = defineTool({
+    name: 'github_repo_health',
+    description:
+      'Run an evidence-based repository health audit using activity recency, releases, GitHub community files, '
+      + 'maintainability metadata, and contributor visibility. Returns a transparent score, risk flags, and concrete next actions.',
+    parameters: {
+      owner: { type: 'string', required: true, description: 'Repository owner.' },
+      repo: { type: 'string', required: true, description: 'Repository name.' },
+    },
+    output: {
+      schema: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          fullName: { type: 'string', required: true },
+          status: { type: 'string', enum: ['healthy', 'watch', 'risk'], required: true },
+          score: { type: 'integer', required: true },
+          scoreBreakdown: {
+            type: 'object', additionalProperties: false, required: true,
+            properties: {
+              activity: { type: 'integer', required: true },
+              release: { type: 'integer', required: true },
+              community: { type: 'integer', required: true },
+              maintainability: { type: 'integer', required: true },
+              contributors: { type: 'integer', required: true },
+            },
+          },
+          evidence: {
+            type: 'object', additionalProperties: false, required: true,
+            properties: {
+              pushedAt: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+              latestRelease: { oneOf: [{ type: 'string' }, { type: 'null' }], required: true },
+              recentCommits: { type: 'integer', required: true },
+              visibleContributors: { type: 'integer', required: true },
+              communityHealthPercentage: { oneOf: [{ type: 'integer' }, { type: 'null' }], required: true },
+              communityFiles: {
+                oneOf: [
+                  {
+                    type: 'object', additionalProperties: false,
+                    properties: {
+                      codeOfConduct: { type: 'boolean', required: true },
+                      contributing: { type: 'boolean', required: true },
+                      issueTemplate: { type: 'boolean', required: true },
+                      pullRequestTemplate: { type: 'boolean', required: true },
+                      readme: { type: 'boolean', required: true },
+                      security: { type: 'boolean', required: true },
+                      license: { type: 'boolean', required: true },
+                    },
+                  },
+                  { type: 'null' },
+                ],
+                required: true,
+              },
+            },
+          },
+          riskFlags: { type: 'array', required: true, items: { type: 'string' } },
+          recommendations: { type: 'array', required: true, items: { type: 'string' } },
+          caveat: { type: 'string', required: true },
+        },
+      },
+      render: (_args, value) => [{ type: 'text', text: renderRepoHealth(value) }],
+    },
+    async execute(args, exec) {
+      assertOwnerRepo(args.owner, args.repo)
+      const missingIsNull = <T>(promise: Promise<T>): Promise<T | null> => promise.catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : String(error)
+        if (/not found|404/i.test(message)) return null
+        throw error
+      })
+      const [overview, releaseList, commits, contributorsList, communityProfile] = await Promise.all([
+        client.getRepo(args.owner, args.repo, exec.signal),
+        client.listReleases(args.owner, args.repo, 5, exec.signal),
+        client.recentCommits(args.owner, args.repo, 10, exec.signal),
+        client.listContributors(args.owner, args.repo, 10, exec.signal),
+        missingIsNull(client.getCommunityProfile(args.owner, args.repo, exec.signal)),
+      ])
+      const pushAge = daysSince(overview.pushedAt)
+      const latestRelease = releaseList[0]?.publishedAt ?? null
+      const releaseAge = daysSince(latestRelease)
+      const activity = pushAge === null ? 0 : pushAge <= 7 ? 30 : pushAge <= 30 ? 25 : pushAge <= 90 ? 18 : pushAge <= 180 ? 10 : pushAge <= 365 ? 5 : 0
+      const release = releaseAge === null ? 0 : releaseAge <= 30 ? 20 : releaseAge <= 90 ? 16 : releaseAge <= 365 ? 10 : releaseAge <= 730 ? 5 : 2
+      const community = communityProfile === null ? 0 : Math.round(communityProfile.healthPercentage * 0.2)
+      const maintainability = (overview.archived ? 0 : 5) + (overview.license === null ? 0 : 5) + (overview.defaultBranch === null ? 0 : 3) + (overview.description === null ? 0 : 2)
+      const contributorCount = contributorsList.length
+      const contributors = contributorCount >= 10 ? 15 : contributorCount >= 5 ? 12 : contributorCount >= 3 ? 9 : contributorCount >= 2 ? 6 : contributorCount >= 1 ? 3 : 0
+      const scoreBreakdown = { activity, release, community, maintainability, contributors }
+      const score = Object.values(scoreBreakdown).reduce((sum, value) => sum + value, 0)
+      const riskFlags: string[] = []
+      const recommendations: string[] = []
+      if (overview.archived) {
+        riskFlags.push('Repository is archived and read-only.')
+        recommendations.push('Publish a maintained successor or clearly document archival status.')
+      }
+      if (pushAge === null || pushAge > 180) {
+        riskFlags.push('No recent push activity was detected in the last 180 days.')
+        recommendations.push('Resume a visible maintenance cadence or document the project as stable/maintenance-only.')
+      }
+      if (latestRelease === null) {
+        riskFlags.push('No GitHub release was found.')
+        recommendations.push('Publish versioned releases with concise changelogs.')
+      } else if (releaseAge !== null && releaseAge > 365) {
+        riskFlags.push('The latest GitHub release is more than one year old.')
+        recommendations.push('Cut a current release or explain the release policy.')
+      }
+      if (communityProfile === null) {
+        riskFlags.push('GitHub community profile data is unavailable.')
+        recommendations.push('Add standard community-health files and verify GitHub can detect them.')
+      } else {
+        if (!communityProfile.files.security) {
+          riskFlags.push('No SECURITY.md was detected.')
+          recommendations.push('Add a SECURITY.md with supported versions and a private reporting path.')
+        }
+        if (!communityProfile.files.readme) {
+          riskFlags.push('No README was detected by GitHub community health.')
+          recommendations.push('Add a root README with installation, examples, support, and limitations.')
+        }
+      }
+      if (overview.license === null) {
+        riskFlags.push('No machine-readable license was detected.')
+        recommendations.push('Add an explicit SPDX-compatible license file.')
+      }
+      if (contributorCount <= 1) {
+        riskFlags.push('Contributor visibility is concentrated in one or zero accounts.')
+        recommendations.push('Document contribution and review paths to reduce maintainer concentration risk.')
+      }
+      const status: 'healthy' | 'watch' | 'risk' = overview.archived || score < 50 ? 'risk' : score < 75 ? 'watch' : 'healthy'
+      return {
+        fullName: overview.fullName,
+        status,
+        score,
+        scoreBreakdown,
+        evidence: {
+          pushedAt: overview.pushedAt,
+          latestRelease,
+          recentCommits: commits.length,
+          visibleContributors: contributorCount,
+          communityHealthPercentage: communityProfile?.healthPercentage ?? null,
+          communityFiles: communityProfile?.files ?? null,
+        },
+        riskFlags,
+        recommendations,
+        caveat: 'This is a transparent maintenance heuristic, not a security audit, quality guarantee, or adoption metric.',
+      }
+    },
+    presentCall: (args) => ({ card: 'generic', title: `Repository health: ${args.owner}/${args.repo}`, kind: 'search', rawInput: args }),
+  })
+
+  return [repo, releases, search, issues, pulls, contributors, report, compare, trending, userRepos, arxivSearch, weeklyDigest, notifications, repoHealth] as const
 }
 
 /**
@@ -997,5 +1292,5 @@ export function apply(ctx: Context, config: Config): void {
       : githubFetcher
     ctx.tools.register(buildCatalogTool(fetcher, spec))
   }
-  ctx.tools.register(buildHelpTool(catalog.length + 12))
+  ctx.tools.register(buildHelpTool(catalog.length + 14))
 }

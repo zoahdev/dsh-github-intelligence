@@ -90,6 +90,38 @@ export interface GitHubCommit {
   htmlUrl: string
 }
 
+export interface GitHubNotification {
+  id: string
+  unread: boolean
+  reason: string
+  updatedAt: string | null
+  lastReadAt: string | null
+  repository: {
+    fullName: string
+    htmlUrl: string
+  }
+  subject: {
+    title: string
+    type: string
+    apiUrl: string | null
+    htmlUrl: string | null
+    latestCommentUrl: string | null
+  }
+}
+
+export interface GitHubCommunityProfile {
+  healthPercentage: number
+  files: {
+    codeOfConduct: boolean
+    contributing: boolean
+    issueTemplate: boolean
+    pullRequestTemplate: boolean
+    readme: boolean
+    security: boolean
+    license: boolean
+  }
+}
+
 export type IssueState = 'open' | 'closed' | 'all'
 export type PullState = 'open' | 'closed' | 'all'
 
@@ -122,6 +154,16 @@ function firstLine(value: unknown): string | null {
   if (text === null) return null
   const index = text.indexOf('\n')
   return index === -1 ? text : text.slice(0, index)
+}
+
+function subjectHtmlUrl(value: unknown): string | null {
+  const url = asString(value)
+  if (url === null) return null
+  const match = /^https:\/\/api\.github\.com\/repos\/([^/]+)\/([^/]+)\/(issues|pulls|discussions|commits)\/([^/?#]+)/.exec(url)
+  if (match === null) return null
+  const [, owner, repo, surface, id] = match
+  const webSurface = surface === 'pulls' ? 'pull' : surface === 'commits' ? 'commit' : surface
+  return `https://github.com/${owner}/${repo}/${webSurface}/${id}`
 }
 
 /**
@@ -281,6 +323,50 @@ export class GitHubClient {
     })
   }
 
+  /** Repository community-health files and GitHub's own health percentage. */
+  getCommunityProfile(owner: string, repo: string, signal: AbortSignal): Promise<GitHubCommunityProfile> {
+    const path = `/repos/${this.encode(owner, repo)}/community/profile`
+    return this.cached(`community:${path}`, async () => {
+      const raw = await this.request<Record<string, unknown>>(path, signal)
+      const files = raw.files !== null && typeof raw.files === 'object'
+        ? raw.files as Record<string, unknown>
+        : {}
+      const present = (key: string): boolean => files[key] !== null && files[key] !== undefined
+      return {
+        healthPercentage: Math.min(Math.max(asNumber(raw.health_percentage), 0), 100),
+        files: {
+          codeOfConduct: present('code_of_conduct') || present('code_of_conduct_file'),
+          contributing: present('contributing'),
+          issueTemplate: present('issue_template'),
+          pullRequestTemplate: present('pull_request_template'),
+          readme: present('readme'),
+          security: present('security'),
+          license: present('license'),
+        },
+      }
+    })
+  }
+
+  /** Authenticated notification inbox, exposed as a read-only maintainer queue. */
+  async listNotifications(
+    all: boolean,
+    participating: boolean,
+    limit: number,
+    signal: AbortSignal,
+  ): Promise<GitHubNotification[]> {
+    if (this.options.token === undefined || this.options.token === '') {
+      throw new Error(
+        'github-intelligence: github_notifications requires `githubToken` with notification read access.',
+      )
+    }
+    const perPage = Math.min(Math.max(Math.trunc(limit), 1), 50)
+    const path = `/notifications?all=${all}&participating=${participating}&per_page=${perPage}`
+    return await this.cached(`notifications:${path}`, async () => {
+      const data = await this.request<unknown[]>(path, signal)
+      return data.map((entry) => this.parseNotification(entry))
+    })
+  }
+
   private parseRelease(entry: unknown): GitHubRelease {
     const raw = entry as Record<string, unknown>
     return {
@@ -376,6 +462,34 @@ export class GitHubClient {
       author: author !== null && typeof author === 'object' ? asString(author.name) : null,
       date: author !== null && typeof author === 'object' ? asString(author.date) : null,
       htmlUrl: asString(raw.html_url) ?? '',
+    }
+  }
+
+  private parseNotification(entry: unknown): GitHubNotification {
+    const raw = entry as Record<string, unknown>
+    const repository = raw.repository !== null && typeof raw.repository === 'object'
+      ? raw.repository as Record<string, unknown>
+      : {}
+    const subject = raw.subject !== null && typeof raw.subject === 'object'
+      ? raw.subject as Record<string, unknown>
+      : {}
+    return {
+      id: asString(raw.id) ?? '',
+      unread: asBoolean(raw.unread),
+      reason: asString(raw.reason) ?? 'unknown',
+      updatedAt: asString(raw.updated_at),
+      lastReadAt: asString(raw.last_read_at),
+      repository: {
+        fullName: asString(repository.full_name) ?? 'unknown',
+        htmlUrl: asString(repository.html_url) ?? '',
+      },
+      subject: {
+        title: asString(subject.title) ?? 'untitled',
+        type: asString(subject.type) ?? 'unknown',
+        apiUrl: asString(subject.url),
+        htmlUrl: subjectHtmlUrl(subject.url),
+        latestCommentUrl: asString(subject.latest_comment_url),
+      },
     }
   }
 }

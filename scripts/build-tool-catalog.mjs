@@ -17,6 +17,8 @@ const FLAGSHIP = [
   ['github_trending', 'Recently created repositories sorted by stars (optional language filter).'],
   ['github_user_repos', "A user's top repositories by stars."],
   ['github_weekly_digest', 'One-week digest: releases, merged PRs, new issues, and commits from the last N days.'],
+  ['github_notifications', 'Authenticated maintainer queue for mentions, review requests, assignments, and authored-thread updates.'],
+  ['github_repo_health', 'Evidence-based repository health score, risks, and recommended next actions.'],
   ['arxiv_search', 'Search the ArXiv preprint corpus (title, authors, abstract, date, link).'],
   ['github_help', 'Self-discoverable catalog of all available tools.'],
 ]

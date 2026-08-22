@@ -31,7 +31,7 @@ apply(ctx, {
 const agent = createScope(ctx, 'agent-visibility')
 const schemas = ctx.tools.schemas(scopeOf(agent.ctx))
 const names = new Set(schemas.map((schema) => schema.name))
-const required = ['github_repo_report', 'github_weekly_digest', 'github_repo_languages', 'github_help']
+const required = ['github_repo_report', 'github_weekly_digest', 'github_notifications', 'github_repo_health', 'github_repo_languages', 'github_help']
 const missing = required.filter((tool) => !names.has(tool))
 if (missing.length > 0) {
   throw new Error(`plugin ${name}: tools invisible to a real agent scope: ${missing.join(', ')}`)

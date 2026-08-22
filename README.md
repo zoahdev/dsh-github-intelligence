@@ -8,7 +8,7 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**The most comprehensive developer-intelligence integration for DeepSeek Harness: 196+ read-only tools across 16 external ecosystems plus the dsh registry itself** — GitHub, GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit, dev.to, RubyGems, NuGet, the Go module proxy, and ArXiv. No API key required, rate-limit-friendly TTL caching, cancellation, and UI cards.
+**Developer intelligence for DeepSeek Harness: 201 read-only tools across GitHub, 16 external ecosystems, and the dsh registry itself** — now with an authenticated maintainer inbox and evidence-based repository health audits. Public tools need no API key; every request supports cancellation, rate-limit-friendly TTL caching, and UI cards.
 
 > Topic: [`dsh-plugin`](https://github.com/topics/dsh-plugin) · Tested with `dsh` 0.1.0-rc.6 · Node 24 / pnpm 11
 
@@ -30,7 +30,10 @@
 | `github_compare` | Side-by-side comparison of two repositories with numeric deltas |
 | `github_trending` | Recently created repositories sorted by stars (optional language filter) |
 | `github_user_repos` | A user's top repositories by stars |
-| `github_help` | Catalog of all 140+ tools — call it when unsure which tool to use |
+| `github_weekly_digest` | Releases, merged PRs, new issues, and commits from a configurable look-back window |
+| `github_notifications` | Authenticated attention queue for mentions, review requests, assignments, and authored threads |
+| `github_repo_health` | Transparent repository health score with evidence, risks, and concrete next actions |
+| `github_help` | Catalog of all 200 other tools — call it when unsure which tool to use |
 
 Beyond GitHub, the catalog also covers **GitLab, Gitee, npm, PyPI, crates.io, Docker Hub, Hugging Face, Hacker News, Stack Overflow, Reddit**, and the **dsh plugin ecosystem itself** (registry stats) — one install, one consistent tool style, one cache.
 
@@ -40,6 +43,8 @@ Example prompts:
 - "What open issues does `ollama/ollama` have right now?"
 - "Who are the top contributors of `openai/openai-python`?"
 - "Find the top 5 TypeScript agent frameworks and compare their stars."
+- "What needs my attention on GitHub right now?"
+- "Audit the repository health of `owner/repo` and tell me exactly what to fix."
 
 ## Install
 
@@ -60,22 +65,28 @@ All values are optional and set in `cordis.yml`:
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `githubToken` | string | *(none)* | GitHub token to raise the anonymous 60 requests/hour limit. Never commit it. |
+| `githubToken` | string | *(none)* | GitHub token to raise rate limits and enable `github_notifications` when it has notification read access. Never commit it. |
 | `timeoutMs` | number | `10000` | Request timeout in milliseconds. |
 | `defaultLimit` | number | `5` | Default result count when the model omits `limit`. |
 | `bodyPreviewChars` | number | `500` | Maximum characters kept from a release body preview. |
 | `cacheTtlMs` | number | `60000` | In-memory response cache TTL, so composed calls stay cheap. |
-| `userAgent` | string | `dsh-github-intelligence/2.8.0` | User-Agent header sent to the GitHub API. |
+| `userAgent` | string | `dsh-github-intelligence/2.10.0` | User-Agent header sent to the GitHub API. |
 
 ## Why "most complete"
 
-- **Breadth**: 196+ tools across 16 external developer ecosystems plus the dsh registry — not just one endpoint.
-- **Depth**: `github_repo_report` composes repo facts into one canonical answer; `github_weekly_digest` answers "what happened this week"; `arxiv_search` searches the preprint literature (16th ecosystem); `github_help` makes the catalog self-discoverable.
+- **Breadth**: 201 tools across GitHub, 16 external developer ecosystems, and the dsh registry — not just one endpoint.
+- **Depth**: `github_repo_report` composes repo facts; `github_weekly_digest` explains change; `github_notifications` creates a personal attention queue; `github_repo_health` turns evidence into risks and next actions.
 - **Rate-limit friendly**: every endpoint is wrapped in a short TTL cache; the deep report reuses cached sub-calls (4 HTTP requests, not 4+ per repetition).
 - **Correctness**: issues are filtered to exclude pull requests; every request honors `exec.signal`; anonymous rate limits and 429s produce actionable errors.
-- **Verified**: 47 tests, plus a real-network smoke for every v2.3.0..v2.8.0 tool (37 tools) and a live `github_weekly_digest` run, CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
+- **Verified**: 52 tests, real-registry visibility for all 201 tools, real-network smoke for every v2.3.0..v2.8.0 tool (37 tools), and CI that installs the bundle into `dsh web` and boots it (see [VERIFICATION.md](./VERIFICATION.md)).
 
 > ⭐ If this helps your agent, a star helps the ecosystem find it. Feedback and issues are equally welcome.
+
+## What's new in v2.10.0
+
+- `github_notifications`: a read-only maintainer inbox that groups authenticated GitHub notifications into mentions, review requests, assignments, authored-thread updates, and other work.
+- `github_repo_health`: a transparent 100-point maintenance heuristic with five scored dimensions, supporting evidence, risk flags, concrete recommendations, and an explicit non-security-audit caveat.
+- 201 registered tools, 52 passing tests, and real-agent registry visibility checks for both new flagship tools.
 
 ## What's new in v2.3.0
 
@@ -160,7 +171,7 @@ MIT © 2026 zoahdev
 [![CI](https://img.shields.io/github/actions/workflow/status/zoahdev/dsh-github-intelligence/ci.yml?branch=main)](https://github.com/zoahdev/dsh-github-intelligence/actions)
 [![Release](https://img.shields.io/github/v/release/zoahdev/dsh-github-intelligence)](https://github.com/zoahdev/dsh-github-intelligence/releases)
 
-**dsh-github-intelligence —— DeepSeek Harness 上最全面的开发者情报整合：196+ 只读工具，横跨 16 大外部生态 + dsh 注册表**（GitHub、GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit、dev.to、RubyGems、NuGet、Go module proxy、ArXiv）。无需 API Key，内置 60 秒缓存，支持取消与 UI 卡片。
+**dsh-github-intelligence —— 面向 DeepSeek Harness 的开发者情报系统：201 个只读工具，覆盖 GitHub、16 大外部生态与 dsh 注册表**。新增维护者通知待办和可解释的仓库健康审计；公共工具无需 API Key，全部请求支持取消、TTL 缓存与 UI 卡片。
 
 > 话题：[`dsh-plugin`](https://github.com/topics/dsh-plugin) · 已在 `dsh` 0.1.0-rc.6 / Node 24 / pnpm 11 实测
 
@@ -178,7 +189,10 @@ MIT © 2026 zoahdev
 | `github_compare` | 两个仓库并排对比（含数值差量） |
 | `github_trending` | 近期新建仓库按星标排序（可按语言过滤） |
 | `github_user_repos` | 某用户星标最高的仓库 |
-| `github_help` | 全部 140+ 工具目录，不确定时先问它 |
+| `github_weekly_digest` | 可配置时间窗口内的 Release、已合并 PR、新 Issue 与提交 |
+| `github_notifications` | 需要 Token 的维护者待办：@提及、审查请求、指派与本人主题更新 |
+| `github_repo_health` | 带证据、风险项和具体改进建议的透明仓库健康评分 |
+| `github_help` | 其余 200 个工具的自发现目录，不确定时先问它 |
 
 GitHub 之外，目录还覆盖 **GitLab、Gitee、npm、PyPI、crates.io、Docker Hub、Hugging Face、Hacker News、Stack Overflow、Reddit** 以及 **dsh 插件生态自身**（注册表统计）——一次安装，统一风格，统一缓存。
 
@@ -188,24 +202,33 @@ GitHub 之外，目录还覆盖 **GitLab、Gitee、npm、PyPI、crates.io、Dock
 - "ollama/ollama 现在有哪些 open issue？"
 - "openai/openai-python 的头部贡献者是谁？"
 - "找 5 个 TypeScript agent 框架并按星标对比"
+- "我现在 GitHub 上有什么必须处理？"
+- "审计 owner/repo 的仓库健康度，并告诉我具体改什么"
 
 ## 安装
 
 ```sh
-dsh plugin --profile web add github:zoahdev/dsh-github-intelligence
-dsh plugin --profile web add ./dsh-github-intelligence-1.0.0.tgz
+dsh plugin --profile web add dsh-github-intelligence
+# 或直接使用上游 CLI：
+pnpm dlx @deepseek-ai/dsh plugin --profile web add dsh-github-intelligence
 ```
 
 ## 为什么说"最完整"
 
-- **覆盖面**：196+ 工具、16 大外部生态 + dsh 注册表，不是单点工具；
-- **深度**：`github_repo_report` 一次回答"这个仓库到底怎么样"；`github_help` 让目录自发现；
+- **覆盖面**：201 个工具，覆盖 GitHub、16 大外部生态与 dsh 注册表，不是单点工具；
+- **深度**：`github_repo_report` 汇总事实，`github_notifications` 形成个人待办，`github_repo_health` 给出有证据的风险与行动建议；
 - **周报**：`github_weekly_digest` 一次回答"这个仓库这周发生了什么"；
 - **省配额**：所有接口带短 TTL 缓存，深度报告复用缓存子调用，一次只发 4 个请求；
 - **正确性**：Issue 自动排除 PR、全部请求支持取消、匿名限流/429 有明确提示；
-- **验证**：44 个测试 + v2.3.0..v2.8.0 全部 37 个新工具真实网络冒烟 + `github_weekly_digest` 真实运行 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
+- **验证**：52 个测试 + 201 个工具真实 Agent 注册可见性验证 + v2.3.0..v2.8.0 全部 37 个新工具真实网络冒烟 + CI 真实安装进 `dsh web` 并启动（见 [VERIFICATION.md](./VERIFICATION.md)）。
 
 > ⭐ 如果它帮到了你的 agent，一个 star 就能让整个生态更容易发现它。反馈和 issue 同样欢迎。
+
+## v2.10.0 新增
+
+- `github_notifications`：只读维护者收件箱，把已认证的 GitHub 通知归类为 @提及、审查请求、指派、本人主题更新和其它待办；
+- `github_repo_health`：透明的 100 分维护健康启发式，包含五项分数、原始证据、风险标记、具体建议，并明确说明它不是安全审计；
+- 201 个注册工具、52 个通过测试，并在真实 Agent 工具注册表中验证两个新旗舰工具可见。
 
 ## v2.3.0 新增
 

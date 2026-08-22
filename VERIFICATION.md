@@ -1,6 +1,6 @@
 # Verification Record
 
-Date: 2026-08-15 · Environment: Windows, Node 24.19.0 (bundled runtime), pnpm 11.19.0, dsh CLI 0.1.0-rc.6
+Updated: 2026-08-22 · Verified on Node 24 / pnpm 11 and dsh CLI 0.1.0-rc.6
 
 ## 1. TypeScript build
 
@@ -16,7 +16,7 @@ Result: `tsc -p tsconfig.json` exits 0, emits `lib/` with `index.js`, `github.js
 pnpm test
 ```
 
-Result: 3 test files, 44 tests, all passed. Coverage includes extended repo parsing, issue/PR filtering, contributors, commits, TTL caching, rate-limit/404 errors, registration of 195+ tools, the deep report + weekly digest (including 404 tolerance for PR-disabled repositories), catalog completeness (unique names, 100+ tool floor), generated-tool execution (GitHub lists, npm search unwrapping, Hacker News item resolution, ecosystem stats, GitLab/Gitee, file content, the v2.3.0..v2.8.0 tool sets, local limit enforcement, SO site param), and input validation.
+Result: 4 test files, 52 tests, all passed. Coverage includes authenticated notification parsing and attention grouping, notification-token enforcement, community-profile parsing, transparent repository-health scoring, extended repo parsing, issue/PR filtering, contributors, commits, TTL caching, rate-limit/404 errors, the deep report + weekly digest, catalog completeness, generated-tool execution, and input validation.
 
 In addition, every v2.3.0 tool passed a real-network smoke against the public GitHub API (scripts/v230-network-smoke.mjs): `github_user_repositories`, `github_user_social_accounts`, `github_repo_releases`, `github_repo_issues`, `github_repo_pulls`, `github_repo_contributors`, `github_repo_subscribers`, `github_repo_collaborators`, `github_repo_git_refs`, `github_repo_punch_card` (168 punches), `github_repo_security_advisories`, and `github_search_repositories`.
 
@@ -45,8 +45,8 @@ Result: package added to the `web` profile; `dsh --profile web --dump-config` sh
 dsh web --port 4111
 ```
 
-Result: `dsh web: http://127.0.0.1:4111`; `GET /` returns HTTP 200. No plugin load errors. All seven tools register during `apply()`; a schema/registration failure would abort boot.
+Result: `dsh web: http://127.0.0.1:4111`; `GET /` returns HTTP 200. No plugin load errors. All tools register during `apply()`; a schema/registration failure would abort boot.
 
 ## Agent-visibility verification (2026-08-15)
 
-`scripts/visibility-check.mjs` mounts a REAL Cordis context, the REAL `@deepseek-ai/dsh-tools` ToolRuntime, and a real scoped agent context, applies the plugin through the real registration path, and asserts representative tools (`github_repo_report`, `github_weekly_digest`, `github_repo_languages`, `github_help`) are visible in `ctx.tools.schemas(scope)` — 198 tools total. This closes the registry-level half of the dual-instance concern (discussions #1697/#1782); the remaining caveat is that a full interactive agent session is not exercised in CI.
+`scripts/visibility-check.mjs` mounts a real Cordis context, the real `@deepseek-ai/dsh-tools` ToolRuntime, and a scoped agent context, then asserts `github_repo_report`, `github_weekly_digest`, `github_notifications`, `github_repo_health`, `github_repo_languages`, and `github_help` are visible in `ctx.tools.schemas(scope)` — 201 tools total. This closes the registry-level half of the dual-instance concern (discussions #1697/#1782); the remaining caveat is that a full interactive agent session is not exercised in CI.

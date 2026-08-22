@@ -24,6 +24,12 @@ jobs:
         run: pnpm run build
       - name: Unit tests
         run: pnpm test
+      - name: Real agent tool visibility
+        run: node scripts/visibility-check.mjs
+      - name: Generated catalog is current
+        run: |
+          node scripts/build-tool-catalog.mjs
+          git diff --exit-code -- docs/index.html
       - name: Pack
         run: pnpm pack
 

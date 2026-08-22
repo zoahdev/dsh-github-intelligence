@@ -117,6 +117,67 @@ describe('GitHubClient', () => {
     expect(commits[0]).toMatchObject({ sha: 'abc123', message: 'fix: thing', author: 'Zo' })
   })
 
+  it('maps the community health profile', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({
+      health_percentage: 86,
+      files: {
+        code_of_conduct: { html_url: 'coc' },
+        contributing: { html_url: 'contributing' },
+        issue_template: { html_url: 'issues' },
+        pull_request_template: null,
+        readme: { html_url: 'readme' },
+        security: { html_url: 'security' },
+        license: { html_url: 'license' },
+      },
+    })))
+    const profile = await makeClient().getCommunityProfile('a', 'b', signal())
+    expect(profile).toEqual({
+      healthPercentage: 86,
+      files: {
+        codeOfConduct: true,
+        contributing: true,
+        issueTemplate: true,
+        pullRequestTemplate: false,
+        readme: true,
+        security: true,
+        license: true,
+      },
+    })
+  })
+
+  it('requires a token for the notification inbox', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(makeClient().listNotifications(false, false, 5, signal())).rejects.toThrow('requires `githubToken`')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('maps authenticated notifications to actionable web URLs', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse([{
+      id: '42',
+      unread: true,
+      reason: 'review_requested',
+      updated_at: '2026-08-22T00:00:00Z',
+      last_read_at: null,
+      repository: { full_name: 'a/b', html_url: 'https://github.com/a/b' },
+      subject: {
+        title: 'Improve parser',
+        type: 'PullRequest',
+        url: 'https://api.github.com/repos/a/b/pulls/7',
+        latest_comment_url: 'https://api.github.com/repos/a/b/issues/comments/9',
+      },
+    }]))
+    vi.stubGlobal('fetch', fetchMock)
+    const list = await makeClient({ token: 'test-token' }).listNotifications(false, true, 5, signal())
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('/notifications?all=false&participating=true&per_page=5')
+    expect(list[0]).toMatchObject({
+      id: '42',
+      reason: 'review_requested',
+      repository: { fullName: 'a/b' },
+      subject: { title: 'Improve parser', htmlUrl: 'https://github.com/a/b/pull/7' },
+    })
+  })
+
   it('reports anonymous rate-limit hits with actionable guidance', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ message: 'limited' }, {
       ok: false,

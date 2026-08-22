@@ -243,3 +243,65 @@ describe('github_user_repos tool', () => {
     expect(result).toMatchObject({ username: 'deepseek-ai', repos: [{ fullName: 'u/big', stars: 99 }] })
   })
 })
+
+describe('github_notifications tool', () => {
+  it('turns authenticated notifications into an attention summary', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse([
+      {
+        id: '1', unread: true, reason: 'review_requested', updated_at: '2026-08-22T00:00:00Z', last_read_at: null,
+        repository: { full_name: 'x/y', html_url: 'https://github.com/x/y' },
+        subject: { title: 'Review me', type: 'PullRequest', url: 'https://api.github.com/repos/x/y/pulls/3', latest_comment_url: null },
+      },
+      {
+        id: '2', unread: true, reason: 'mention', updated_at: '2026-08-22T00:00:00Z', last_read_at: null,
+        repository: { full_name: 'x/y', html_url: 'https://github.com/x/y' },
+        subject: { title: 'Question', type: 'Issue', url: 'https://api.github.com/repos/x/y/issues/4', latest_comment_url: null },
+      },
+    ])))
+    const notifications = defineTools(resolvedConfig({ githubToken: 'token' }))[12]
+    const result = await notifications.execute({ state: 'unread', participation: 'all', limit: 10 }, exec())
+    expect(result).toMatchObject({
+      state: 'unread',
+      participating: 'all',
+      attention: { mentions: 1, reviewRequests: 1, assignments: 0, authored: 0, other: 0 },
+      notifications: [
+        { reason: 'review_requested', subject: { htmlUrl: 'https://github.com/x/y/pull/3' } },
+        { reason: 'mention', subject: { htmlUrl: 'https://github.com/x/y/issues/4' } },
+      ],
+    })
+  })
+})
+
+describe('github_repo_health tool', () => {
+  it('produces a transparent healthy score from current evidence', async () => {
+    const now = new Date().toISOString()
+    const fetchMock = vi.fn(async (url: string) => {
+      const u = String(url)
+      if (u.includes('/community/profile')) return jsonResponse({
+        health_percentage: 100,
+        files: {
+          code_of_conduct: {}, contributing: {}, issue_template: {}, pull_request_template: {},
+          readme: {}, security: {}, license: {},
+        },
+      })
+      if (u.includes('/releases?')) return jsonResponse([{ tag_name: 'v1', published_at: now, prerelease: false, html_url: 'r' }])
+      if (u.includes('/commits?')) return jsonResponse([
+        { sha: 'abc', commit: { message: 'feat', author: { name: 'A', date: now } }, html_url: 'c' },
+      ])
+      if (u.includes('/contributors?')) return jsonResponse(Array.from({ length: 5 }, (_, i) => ({ login: `u${i}`, contributions: 1 })))
+      return jsonResponse({ ...repoBody(), pushed_at: now })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const health = defineTools(resolvedConfig())[13]
+    const result = await health.execute({ owner: 'x', repo: 'y' }, exec())
+    expect(result).toMatchObject({
+      fullName: 'x/y',
+      status: 'healthy',
+      score: 97,
+      scoreBreakdown: { activity: 30, release: 20, community: 20, maintainability: 15, contributors: 12 },
+      evidence: { recentCommits: 1, visibleContributors: 5, communityHealthPercentage: 100 },
+      riskFlags: [],
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(5)
+  })
+})
